@@ -19,7 +19,7 @@
   "author": "Sabrina Do",
   "license": "MIT",
   "devDependencies": {
-    "live-server": "^1.2.2",
-    "gh-pages": "^4.0.0"
+    "gh-pages": "^4.0.0",
+    "live-server": "^1.2.2"
   }
 }

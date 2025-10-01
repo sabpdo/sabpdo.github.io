@@ -19,6 +19,61 @@ let targetCameraAngleY = 0;
 let objLoader, gltfLoader, fbxLoader;
 let loadedAssets = {};
 
+// Global saturation boost factor for all materials (1.0 = no change)
+const SATURATION_BOOST = 1.8; // Stronger saturation boost
+
+// Utility: boost an THREE.Color's saturation in HSL space
+function boostColorSaturation(color, factor) {
+  if (!color || typeof color.getHSL !== "function") return;
+  const hsl = { h: 0, s: 0, l: 0 };
+  color.getHSL(hsl);
+  hsl.s = Math.min(1, hsl.s * factor);
+  color.setHSL(hsl.h, hsl.s, hsl.l);
+}
+
+// Utility: apply saturation boost to a material (supports arrays)
+function boostMaterialSaturation(material, factor) {
+  if (!material) return;
+  if (Array.isArray(material)) {
+    material.forEach((m) => boostMaterialSaturation(m, factor));
+    return;
+  }
+  if (material.color) {
+    boostColorSaturation(material.color, factor);
+    material.needsUpdate = true;
+  }
+}
+
+// Utility: traverse a group/object and boost saturation on all mesh materials
+function boostSaturationOnGroup(object3D, factor = SATURATION_BOOST) {
+  if (!object3D || !object3D.traverse) return;
+  object3D.traverse((child) => {
+    if (child.isMesh && child.material) {
+      boostMaterialSaturation(child.material, factor);
+    }
+  });
+}
+
+// Utility: gently increase brightness on all mesh materials in a group
+function increaseBrightnessOnGroup(object3D, factor = 1.15) {
+  if (!object3D || !object3D.traverse) return;
+  object3D.traverse((child) => {
+    if (child.isMesh && child.material) {
+      const apply = (mat) => {
+        if (mat && mat.color) {
+          mat.color.multiplyScalar(factor);
+          mat.needsUpdate = true;
+        }
+      };
+      if (Array.isArray(child.material)) {
+        child.material.forEach(apply);
+      } else {
+        apply(child.material);
+      }
+    }
+  });
+}
+
 // Initialize the 3D scene
 function init3D() {
   const canvas = document.getElementById("room-canvas");
@@ -61,14 +116,24 @@ function init3D() {
   // Renderer
   renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
+  // Ensure correct color space and brighter, filmic tonemapping
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1;
+  renderer.physicallyCorrectLights = true;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   // Lighting
-  const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+  const ambientLight = new THREE.AmbientLight(0xffe8cc, 0.4);
   scene.add(ambientLight);
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  // // Soft skylight + ground bounce to better light PBR assets
+  // const hemiLight = new THREE.HemisphereLight(0xffead6, 0xb07c5e, 0.45);
+  // hemiLight.position.set(0, 5, 0);
+  // scene.add(hemiLight);
+
+  const directionalLight = new THREE.DirectionalLight(0xffe6cc, 1.0);
   directionalLight.position.set(5, 5, 5);
   directionalLight.castShadow = true;
   directionalLight.shadow.mapSize.width = 2048;
@@ -122,6 +187,47 @@ async function loadAssets() {
     { name: "lamp", path: "asset_glb/lampRoundTable.glb", type: "gltf" },
     { name: "books", path: "asset_glb/books.glb", type: "gltf" },
     { name: "cake", path: "asset_glb/strawberry_cake.glb", type: "gltf" },
+    {
+      name: "bunny",
+      path: "asset_glb/new_assets/bunny_plush_toy.glb",
+      type: "gltf",
+    },
+    // new_assets additions
+    {
+      name: "newBed",
+      path: "asset_glb/new_assets/cute_stylized_bed_-_low_poly_-_game_ready.glb",
+      type: "gltf",
+    },
+    {
+      name: "indoorPlantNew",
+      path: "asset_glb/new_assets/indoor_plant.glb",
+      type: "gltf",
+    },
+    {
+      name: "modernPainting",
+      path: "asset_glb/new_assets/modern_three_panel_painting.glb",
+      type: "gltf",
+    },
+    {
+      name: "owlVase",
+      path: "asset_glb/new_assets/owl_flowers_vase.glb",
+      type: "gltf",
+    },
+    {
+      name: "stringLightsNew",
+      path: "asset_glb/new_assets/simple_string_lights.glb",
+      type: "gltf",
+    },
+    {
+      name: "windowAsset",
+      path: "asset_glb/new_assets/window.glb",
+      type: "gltf",
+    },
+    {
+      name: "camera",
+      path: "asset_glb/new_assets/zefir_camera_with_domiplan_lens.glb",
+      type: "gltf",
+    },
   ];
 
   const loadPromises = assetsToLoad.map((asset) => loadAsset(asset));
@@ -326,20 +432,25 @@ function prepareAsset(asset) {
     });
   }
 
+  // Slightly increase saturation for a richer look
+  boostSaturationOnGroup(cloned);
+
   return cloned;
 }
 
 // Create room using loaded assets
 function createRoomWithAssets() {
-  // Bed against the left wall
-  const bed = prepareAsset(loadedAssets.bed);
-  if (bed) {
-    bed.position.set(-5, -2.0, 1.0); // Move bed back slightly and left slightly
-    bed.scale.set(4.5, 4.5, 4.5); // Make bed even bigger
-    bed.rotation.y = 0; // Rotate to have headrest on back wall
-    room.add(bed);
+  // Replace bed with new stylized bed asset if available
+  const newBed = prepareAsset(loadedAssets.newBed || loadedAssets.bed);
+  if (newBed) {
+    newBed.position.set(-1.95, -1.75, -4.5);
+    newBed.scale.set(3, 3, 3);
+    newBed.rotation.y = 4.75;
+    // Boost saturation and darken slightly
+    boostSaturationOnGroup(newBed, 100000000000);
+    increaseBrightnessOnGroup(newBed, 0.97);
+    room.add(newBed);
   } else {
-    // Fallback bed
     createFallbackBed();
   }
 
@@ -393,10 +504,50 @@ function createRoomWithAssets() {
   // Books for decoration on shelves - positioned on the right shelves
   const books = prepareAsset(loadedAssets.books);
   if (books) {
-    books.position.set(2, 1.5, -4.0); // Move books slightly up more
+    books.position.set(2, 1.55, -4.0); // Move books slightly up more
     books.scale.set(10.0, 10.0, 10.0); // Make books 10x bigger
     room.add(books);
   }
+
+  // Indoor plant GLB placed on the shelf
+  const shelfPlant = prepareAsset(loadedAssets.indoorPlantNew);
+  if (shelfPlant) {
+    shelfPlant.position.set(1.5, 1.55, -4.35); // left side of shelf
+    shelfPlant.scale.set(1, 1, 1);
+    shelfPlant.rotation.y = -Math.PI / 12;
+    // keep colors rich but not too bright
+    boostSaturationOnGroup(shelfPlant, 1.2);
+    room.add(shelfPlant);
+  }
+
+  // // Owl flowers vase on the shelf next to books
+  // const owlVase = prepareAsset(loadedAssets.owlVase);
+  // if (owlVase) {
+  //   owlVase.position.set(1.4, 1.55, -4.6);
+  //   owlVase.scale.set(2.75, 2.75, 2.75);
+  //   boostSaturationOnGroup(owlVase, 50);
+  //   increaseBrightnessOnGroup(owlVase, 1.75);
+
+  //   room.add(owlVase);
+  // }
+
+  // // Modern three-panel painting on the back wall
+  // const painting = prepareAsset(loadedAssets.modernPainting);
+  // if (painting) {
+  //   painting.position.set(1.5, 1.6, -4.95);
+  //   painting.scale.set(2, 2, 2);
+  //   painting.rotation.y = 0;
+  //   room.add(painting);
+  // }
+
+  // // Replace procedural string lights with GLB if available
+  // const strLights = prepareAsset(loadedAssets.stringLightsNew);
+  // if (strLights) {
+  //   strLights.position.set(-2.2, 3.4, -4.8);
+  //   strLights.scale.set(0.6, 0.6, 0.6);
+  //   strLights.rotation.y = 0;
+  //   room.add(strLights);
+  // }
 
   // Second table - positioned in a different area
   const table2 = prepareAsset(loadedAssets.table2);
@@ -413,6 +564,7 @@ function createRoomWithAssets() {
     cake.position.set(-3.9, 0, 3); // Position on the second table
     cake.scale.set(0.5, 0.75, 0.5); // Make cake appropriately sized
     cake.rotation.y = Math.PI / 4; // Rotate cake for better presentation
+    increaseBrightnessOnGroup(cake, 1.2);
 
     // Disable shadows for the cake
     cake.traverse((child) => {
@@ -423,6 +575,38 @@ function createRoomWithAssets() {
     });
 
     room.add(cake);
+  }
+
+  // Bunny plush on the bed
+  const bunny = prepareAsset(loadedAssets.bunny);
+  if (bunny) {
+    // Position roughly on the top of the bed mattress
+    // Bed center near (-5, -2, 1). Raise Y slightly above mattress.
+    bunny.position.set(-2.15, 0.15, -1.5);
+    bunny.scale.set(2, 2, 2);
+    bunny.rotation.y = Math.PI / 6;
+    increaseBrightnessOnGroup(bunny, 7);
+    // Ensure plush has soft look: no shadows and softer material
+    if (bunny.traverse) {
+      bunny.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = false;
+          child.receiveShadow = false;
+          if (child.material) {
+            // Prefer keeping texture map while switching to Lambert for softer shading
+            const textureMap = Array.isArray(child.material)
+              ? child.material[0]?.map
+              : child.material.map;
+            const softMaterial = new THREE.MeshLambertMaterial({
+              color: 0xffffff,
+              map: textureMap || null,
+            });
+            child.material = softMaterial;
+          }
+        }
+      });
+    }
+    room.add(bunny);
   }
 }
 
@@ -437,15 +621,102 @@ function createShelves() {
     bracket.position.set(-1.0 + i * 3.3, 2.3, -4.2); // Support brackets for longer shelves
     room.add(bracket);
   }
+
+  // add plant on the shelf
+  createPlant(1.5, 1.6, -4.5); // Light green
+}
+
+// Generate a warm wood planks texture using a canvas, suitable for repeating
+function createWoodPlanksTexture({
+  planks = 6,
+  baseColor = "#c9916a",
+  variation = 12,
+  seamColor = "#7b4f34",
+} = {}) {
+  const size = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  // Helper to clamp values
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+  // Convert hex color to rgb
+  function hexToRgb(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m
+      ? {
+          r: parseInt(m[1], 16),
+          g: parseInt(m[2], 16),
+          b: parseInt(m[3], 16),
+        }
+      : { r: 201, g: 145, b: 106 };
+  }
+
+  const base = hexToRgb(baseColor);
+
+  // Draw planks as horizontal bands with subtle per-plank color variation
+  const plankHeight = size / planks;
+  for (let i = 0; i < planks; i++) {
+    const dv = (Math.random() * 2 - 1) * variation;
+    const r = clamp(base.r + dv, 0, 255);
+    const g = clamp(base.g + dv * 0.7, 0, 255);
+    const b = clamp(base.b + dv * 0.4, 0, 255);
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(0, i * plankHeight, size, plankHeight);
+
+    // Add subtle grain lines within the plank
+    ctx.globalAlpha = 0.08;
+    ctx.strokeStyle = "#000";
+    for (let x = 0; x < size; x += 6 + Math.random() * 10) {
+      const y = i * plankHeight + Math.random() * plankHeight;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 30 + Math.random() * 40, y + (Math.random() - 0.5) * 6);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // Plank seam
+    if (i > 0) {
+      ctx.fillStyle = seamColor;
+      ctx.fillRect(0, i * plankHeight - 2, size, 2);
+    }
+  }
+
+  // Vertical seams to suggest staggered joints
+  ctx.fillStyle = seamColor;
+  for (let x = 0; x < size; x += size / 4) {
+    ctx.fillRect(x, 0, 1, size);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.anisotropy = 4;
+  return texture;
 }
 
 function createWalls() {
-  const wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffc0cb }); // Pastel pink
-  const floorMaterial = new THREE.MeshLambertMaterial({ color: 0xf0a0a0 }); // Light pink wood
-  const trimMaterial = new THREE.MeshLambertMaterial({ color: 0xff91a4 }); // Pink trim
+  // Darker, warmer wall tones
+  const backWallMaterial = new THREE.MeshLambertMaterial({ color: 0xb89477 });
+  const leftWallMaterial = new THREE.MeshLambertMaterial({ color: 0xa97f65 });
+  const trimMaterial = new THREE.MeshLambertMaterial({ color: 0xff91a4 });
 
   // Floor
   const floorGeometry = new THREE.PlaneGeometry(10, 10);
+  const woodTexture = createWoodPlanksTexture({
+    planks: 8,
+    baseColor: "#a46d49", // darker, warmer base
+    variation: 18,
+    seamColor: "#6b442c",
+  });
+  woodTexture.repeat.set(2, 3);
+  const floorMaterial = new THREE.MeshLambertMaterial({
+    map: woodTexture,
+    color: 0x7a5136, // tint darker to counter overexposure
+  });
   const floor = new THREE.Mesh(floorGeometry, floorMaterial);
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -2;
@@ -454,14 +725,14 @@ function createWalls() {
 
   // Back wall
   const backWallGeometry = new THREE.PlaneGeometry(10, 6);
-  const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
+  const backWall = new THREE.Mesh(backWallGeometry, backWallMaterial);
   backWall.position.z = -5;
   backWall.position.y = 1;
   room.add(backWall);
 
   // Left wall with window cutout
   const leftWallGeometry = new THREE.PlaneGeometry(10, 6);
-  const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+  const leftWall = new THREE.Mesh(leftWallGeometry, leftWallMaterial);
   leftWall.rotation.y = Math.PI / 2;
   leftWall.position.x = -5;
   leftWall.position.y = 1;
@@ -492,12 +763,9 @@ function createShelves() {
   topShelf.position.set(2.5, 1.5, -4.5);
   topShelf.castShadow = true;
   room.add(topShelf);
-
-  // Cute plants on shelves
-  createPlant(1.5, 1.6, -4.5, 0x90ee90); // Light green
 }
 
-function createPlant(x, y, z, plantColor = 0x90ee90) {
+function createPlant(x, y, z, plantColor = 0x2e7d32) {
   const plantGroup = new THREE.Group();
 
   // Cute pot - pastel colors
@@ -536,39 +804,40 @@ function createPlant(x, y, z, plantColor = 0x90ee90) {
 }
 
 function createWindow() {
-  // Window frame - cute pastel blue
-  //   const windowFrameGeometry = new THREE.PlaneGeometry(2.2, 2.2);
-  //   const windowFrameMaterial = new THREE.MeshLambertMaterial({
-  //     color: 0xadd8e6,
-  //   }); // Light blue
-  //   const windowFrame = new THREE.Mesh(windowFrameGeometry, windowFrameMaterial);
-  //   windowFrame.position.set(-4.9, 1.5, 0); // Raised window up
-  //   windowFrame.rotation.y = Math.PI / 2; // Rotate the window
-  //   room.add(windowFrame);
+  // Replace created window with GLB window asset if available
+  const win = prepareAsset(loadedAssets.windowAsset);
+  if (win) {
+    win.position.set(-7.5, -0.5, 1.5);
+    win.rotation.y = Math.PI;
+    win.scale.set(0.05, 0.05, 0.05);
+    room.add(win);
+  } else {
+    // Fallback simple window plane
+    const windowGeometry = new THREE.PlaneGeometry(2, 2);
+    const windowMaterial = new THREE.MeshLambertMaterial({
+      color: 0x87ceeb,
+      transparent: true,
+      opacity: 0.7,
+    });
+    const window = new THREE.Mesh(windowGeometry, windowMaterial);
+    window.position.set(-4.8, 1.4, 0.1);
+    window.rotation.y = Math.PI / 2;
+    room.add(window);
+  }
 
-  // Window glass - clear and transparent
-  const windowGeometry = new THREE.PlaneGeometry(2, 2);
-  const windowMaterial = new THREE.MeshLambertMaterial({
-    color: 0x87ceeb, // Light blue sky color
+  // Optional sky-blue pane behind the window opening for a pleasant view
+  const skyPaneGeometry = new THREE.PlaneGeometry(1.5, 3);
+  const skyPaneMaterial = new THREE.MeshLambertMaterial({
+    color: 0x87ceeb,
     transparent: true,
-    opacity: 0.7, // More opaque
+    opacity: 0.85,
+    side: THREE.DoubleSide,
   });
-  const window = new THREE.Mesh(windowGeometry, windowMaterial);
-  window.position.set(-4.8, 1.4, 0.1); // Raised window up
-  window.rotation.y = Math.PI / 2; // Rotate the window
-  room.add(window);
-
-  // Add cute window sill with plant
-  const sillGeometry = new THREE.BoxGeometry(2.1, 0.1, 0.3);
-  const sillMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff }); // Pink
-  const sill = new THREE.Mesh(sillGeometry, sillMaterial);
-  sill.position.set(-4.8, 0.3, 0.1); // Raised sill up to match window
-  sill.rotation.y = Math.PI / 2; // Rotate the shelf
-  sill.castShadow = true;
-  room.add(sill);
-
-  // Plant on window sill
-  createPlant(-4.8, 0.4, 0.2, 0x98fb98); // Pale green - raised up
+  const skyPane = new THREE.Mesh(skyPaneGeometry, skyPaneMaterial);
+  // Place slightly behind the left wall so it's visible through the opening
+  skyPane.position.set(-4.8, 2, -1.5);
+  skyPane.rotation.y = Math.PI / 2;
+  room.add(skyPane);
 }
 
 function createAdditionalWindows() {
@@ -578,31 +847,20 @@ function createAdditionalWindows() {
 }
 
 function createLights() {
-  // Cute string lights with different colors
-  const lightColors = [0xff69b4, 0x98fb98, 0xadd8e6, 0xffc0cb, 0xffd700]; // Pink, green, blue, pink, gold
+  // Use GLB string lights if available
+  const strLights = prepareAsset(loadedAssets.stringLightsNew);
+  if (strLights) {
+    const s1 = strLights.clone();
+    increaseBrightnessOnGroup(s1, 10);
+    s1.position.set(-1.75, 3.45, -4.8);
+    s1.scale.set(0.5, 1, 2);
+    room.add(s1);
 
-  for (let i = -2; i < 7; i++) {
-    const lightGeometry = new THREE.SphereGeometry(0.08, 8, 6);
-    const lightMaterial = new THREE.MeshBasicMaterial({
-      color: lightColors[i],
-      emissive: lightColors[i],
-      emissiveIntensity: 0.3,
-    });
-    const light = new THREE.Mesh(lightGeometry, lightMaterial);
-    light.position.set(-2 + i * 1, 3.5, -4.8);
-    room.add(light);
-  }
-
-  for (let i = -2; i < 10; i++) {
-    const lightGeometry = new THREE.SphereGeometry(0.08, 8, 6);
-    const lightMaterial = new THREE.MeshBasicMaterial({
-      color: lightColors[i],
-      emissive: lightColors[i],
-      emissiveIntensity: 0.3,
-    });
-    const light = new THREE.Mesh(lightGeometry, lightMaterial);
-    light.position.set(-4.75, 3.5, -4.8 + i * 1);
-    room.add(light);
+    // const s2 = strLights.clone();
+    // s2.position.set(-4.75, 3.45, -2.0);
+    // s2.rotation.y = Math.PI / 2;
+    // s2.scale.set(0.7, 0.7, 0.7);
+    // room.add(s2);
   }
 }
 
@@ -642,7 +900,9 @@ function initModal() {
   const closeBtn = document.getElementById("close-modal");
 
   // Show modal on page load
-  modal.style.display = "block";
+  if (modal) {
+    modal.style.display = "block";
+  }
 
   // Handle navigation clicks
   navLinks.forEach((link) => {
@@ -653,24 +913,31 @@ function initModal() {
     });
   });
 
-  // Handle close button
-  closeBtn.addEventListener("click", () => {
-    hideAllContentSections();
-  });
+  // Handle close button (if it exists)
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      hideAllContentSections();
+    });
+  }
 
   // Close modal when clicking outside
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) {
-      hideAllContentSections();
-    }
-  });
+  if (modal) {
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        hideAllContentSections();
+      }
+    });
+  }
 
   // Handle scrapbook modal click outside to close
   const scrapbookModal = document.querySelector(".scrapbook-modal");
   if (scrapbookModal) {
     scrapbookModal.addEventListener("click", (e) => {
       if (e.target === scrapbookModal) {
-        hideAllContentSections();
+        // Small delay to prevent immediate closing during transition
+        setTimeout(() => {
+          hideAllContentSections();
+        }, 100);
       }
     });
   }
@@ -680,7 +947,10 @@ function initModal() {
   if (desktopModal) {
     desktopModal.addEventListener("click", (e) => {
       if (e.target === desktopModal) {
-        hideAllContentSections();
+        // Small delay to prevent immediate closing during transition
+        setTimeout(() => {
+          hideAllContentSections();
+        }, 100);
       }
     });
   }
@@ -690,7 +960,10 @@ function initModal() {
   if (resumePreviewModal) {
     resumePreviewModal.addEventListener("click", (e) => {
       if (e.target === resumePreviewModal) {
-        hideAllContentSections();
+        // Small delay to prevent immediate closing during transition
+        setTimeout(() => {
+          hideAllContentSections();
+        }, 100);
       }
     });
   }
@@ -700,7 +973,10 @@ function initModal() {
   if (educationModal) {
     educationModal.addEventListener("click", (e) => {
       if (e.target === educationModal) {
-        hideAllContentSections();
+        // Small delay to prevent immediate closing during transition
+        setTimeout(() => {
+          hideAllContentSections();
+        }, 100);
       }
     });
   }
@@ -710,7 +986,10 @@ function initModal() {
   if (contactModal) {
     contactModal.addEventListener("click", (e) => {
       if (e.target === contactModal) {
-        hideAllContentSections();
+        // Small delay to prevent immediate closing during transition
+        setTimeout(() => {
+          hideAllContentSections();
+        }, 100);
       }
     });
   }
@@ -720,11 +999,14 @@ function showContentSection(sectionId) {
   // Hide all content sections
   hideAllContentSections();
 
-  // Show the selected section
-  const targetSection = document.getElementById(sectionId);
-  if (targetSection) {
-    targetSection.classList.add("active");
-  }
+  // Small delay to ensure smooth transition
+  setTimeout(() => {
+    // Show the selected section
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+      targetSection.classList.add("active");
+    }
+  }, 50);
 }
 
 function hideAllContentSections() {
@@ -785,12 +1067,17 @@ document.addEventListener("DOMContentLoaded", () => {
 class SpotifyMusicPlayer {
   constructor() {
     this.clientId = "b3629d1eb6a34dbd91aed2ef24c497f1"; // Replace with your Spotify Client ID
-    this.redirectUri = "http://localhost:3000";
+    // Use the exact origin so it works on localhost and GitHub Pages
+    // Make sure to whitelist this exact value (including trailing slash) in Spotify Dashboard
+    this.redirectUri = window.location.origin + "/";
     this.accessToken = null;
     this.currentTrack = null;
     this.audio = null;
     this.isPlaying = false;
     this.isExpanded = false;
+    // Default track to auto-load after login
+    // seasons — wave to earth (user-selected)
+    this.defaultTrackId = "5VBjyOQzqlPNgdRPMM6prF";
 
     this.initializeElements();
     this.setupEventListeners();
@@ -799,6 +1086,9 @@ class SpotifyMusicPlayer {
   initializeElements() {
     this.musicToggle = document.getElementById("music-toggle");
     this.musicContent = document.getElementById("music-content");
+    console.log("Music toggle found:", this.musicToggle);
+    console.log("Music content found:", this.musicContent);
+    this.musicTitle = document.querySelector(".music-title");
     this.spotifyLogin = document.getElementById("spotify-login");
     this.musicPlayerContent = document.getElementById("music-player-content");
     this.spotifyLoginBtn = document.getElementById("spotify-login-btn");
@@ -821,6 +1111,7 @@ class SpotifyMusicPlayer {
   setupEventListeners() {
     // Toggle music player
     this.musicToggle.addEventListener("click", (e) => {
+      console.log("Music toggle clicked!");
       e.stopPropagation();
       this.toggleExpanded();
     });
@@ -869,45 +1160,129 @@ class SpotifyMusicPlayer {
   }
 
   toggleExpanded() {
+    console.log("Toggle expanded called, current state:", this.isExpanded);
+    console.log("Music content element:", this.musicContent);
     this.isExpanded = !this.isExpanded;
 
     if (this.isExpanded) {
       this.musicContent.classList.add("show");
       this.musicToggle.innerHTML = '<i class="fas fa-chevron-up"></i>';
+      console.log("Music player expanded");
     } else {
       this.musicContent.classList.remove("show");
       this.musicToggle.innerHTML = '<i class="fas fa-music"></i>';
+      console.log("Music player collapsed");
     }
   }
 
-  loginToSpotify() {
+  async loginToSpotify() {
     const scopes =
       "user-read-private user-read-email user-top-read user-read-recently-played";
-    const authUrl = `https://accounts.spotify.com/authorize?client_id=${
-      this.clientId
-    }&response_type=token&redirect_uri=${encodeURIComponent(
-      this.redirectUri
-    )}&scope=${encodeURIComponent(scopes)}`;
 
-    window.location.href = authUrl;
+    // PKCE: generate verifier and challenge
+    const codeVerifier = this.generateCodeVerifier();
+    const codeChallenge = await this.generateCodeChallenge(codeVerifier);
+    sessionStorage.setItem("spotify_code_verifier", codeVerifier);
+
+    const params = new URLSearchParams({
+      client_id: this.clientId,
+      response_type: "code",
+      redirect_uri: this.redirectUri,
+      scope: scopes,
+      code_challenge_method: "S256",
+      code_challenge: codeChallenge,
+    });
+
+    window.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
   }
 
-  checkForAccessToken() {
+  async checkForAccessToken() {
+    // First: handle PKCE code in query string
+    const searchParams = new URLSearchParams(window.location.search);
+    const code = searchParams.get("code");
+    if (code) {
+      try {
+        await this.exchangeCodeForToken(code);
+        this.showMusicPlayer();
+        // Clean URL
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        );
+        return;
+      } catch (e) {
+        console.error("PKCE token exchange failed:", e);
+      }
+    }
+
+    // Fallback: legacy implicit flow hash fragment (if previously used)
     const hash = window.location.hash;
     const params = new URLSearchParams(hash.substring(1));
     const token = params.get("access_token");
-
     if (token) {
       this.accessToken = token;
       this.showMusicPlayer();
-      // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
+  }
+
+  async exchangeCodeForToken(code) {
+    const verifier = sessionStorage.getItem("spotify_code_verifier");
+    if (!verifier)
+      throw new Error("Missing PKCE code_verifier in sessionStorage");
+
+    const body = new URLSearchParams({
+      client_id: this.clientId,
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: this.redirectUri,
+      code_verifier: verifier,
+    });
+
+    const response = await fetch("https://accounts.spotify.com/api/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error_description || JSON.stringify(data));
+    }
+
+    this.accessToken = data.access_token;
+  }
+
+  generateCodeVerifier() {
+    const array = new Uint8Array(32);
+    window.crypto.getRandomValues(array);
+    return btoa(String.fromCharCode.apply(null, Array.from(array)))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  }
+
+  async generateCodeChallenge(verifier) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(verifier);
+    const digest = await window.crypto.subtle.digest("SHA-256", data);
+    const bytes = new Uint8Array(digest);
+    let str = "";
+    for (let i = 0; i < bytes.byteLength; i++) {
+      str += String.fromCharCode(bytes[i]);
+    }
+    return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
 
   showMusicPlayer() {
     this.spotifyLogin.style.display = "none";
     this.musicPlayerContent.style.display = "block";
+    this.updateHeaderNowPlaying();
+    // Auto-load a default song if none selected yet
+    if (!this.currentTrack && this.accessToken && this.defaultTrackId) {
+      this.playTrack(this.defaultTrackId);
+    }
   }
 
   async searchTracks() {
@@ -976,8 +1351,10 @@ class SpotifyMusicPlayer {
       // Play preview if available
       if (track.preview_url) {
         this.playPreview(track.preview_url);
+        this.removeEmbedIfAny();
       } else {
-        alert("No preview available for this track");
+        // Fallback: show Spotify embed widget for full track
+        this.showEmbed(track.id);
       }
     } catch (error) {
       console.error("Track fetch error:", error);
@@ -1005,7 +1382,14 @@ class SpotifyMusicPlayer {
       this.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
     });
 
-    this.audio.play();
+    // Autoplay the preview
+    this.audio.play().catch((error) => {
+      console.log("Autoplay prevented:", error);
+      // If autoplay fails, just update the UI to show it's ready to play
+      this.isPlaying = false;
+      this.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+    });
+
     this.isPlaying = true;
     this.playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
   }
@@ -1015,6 +1399,7 @@ class SpotifyMusicPlayer {
 
     this.trackTitle.textContent = this.currentTrack.name;
     this.trackArtist.textContent = this.currentTrack.artists[0].name;
+    this.updateHeaderNowPlaying(this.currentTrack.name);
 
     const albumImage = this.albumArt.querySelector("img");
     if (albumImage) {
@@ -1024,6 +1409,58 @@ class SpotifyMusicPlayer {
         this.currentTrack.album.images[0]?.url || ""
       }" alt="Album Art" onerror="this.innerHTML='🎵'">`;
     }
+  }
+
+  updateHeaderNowPlaying(trackName) {
+    if (!this.musicTitle) return;
+    if (trackName && trackName.trim().length > 0) {
+      this.musicTitle.textContent = `Now Playing — ${trackName}`;
+    } else {
+      this.musicTitle.textContent = "Now Playing";
+    }
+  }
+
+  showEmbed(trackId) {
+    // Create or update an iframe embed for the track
+    let embed = document.getElementById("spotify-embed");
+    if (!embed) {
+      embed = document.createElement("iframe");
+      embed.id = "spotify-embed";
+      embed.style.borderRadius = "12px";
+      embed.width = "100%";
+      embed.height = "152"; // compact height
+      embed.frameBorder = "0";
+      embed.allow =
+        "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+      embed.loading = "lazy";
+      // Insert near the top of the player content
+      this.musicPlayerContent.prepend(embed);
+    }
+    embed.src = `https://open.spotify.com/embed/track/${trackId}?utm_source=generator`;
+
+    // Hide custom UI to avoid double UI
+    this.toggleCustomPlayerVisibility(false);
+  }
+
+  removeEmbedIfAny() {
+    const embed = document.getElementById("spotify-embed");
+    if (embed && embed.parentNode) {
+      embed.parentNode.removeChild(embed);
+    }
+    // Show custom UI again when embed is removed
+    this.toggleCustomPlayerVisibility(true);
+  }
+
+  toggleCustomPlayerVisibility(visible) {
+    const sections = [
+      document.querySelector(".track-info"),
+      document.querySelector(".music-controls"),
+      document.querySelector(".volume-control"),
+      document.querySelector(".progress-container"),
+    ];
+    sections.forEach((el) => {
+      if (el) el.style.display = visible ? "" : "none";
+    });
   }
 
   togglePlayPause() {
@@ -1103,6 +1540,12 @@ let musicPlayer;
 function initMusicPlayer() {
   musicPlayer = new SpotifyMusicPlayer();
 }
+
+// Prevent SDK global callback error if the Web Playback SDK script is loaded
+// We are not using the SDK player here (only Web API + HTML5 Audio for previews),
+// so define a no-op to satisfy the script's expected global.
+window.onSpotifyWebPlaybackSDKReady =
+  window.onSpotifyWebPlaybackSDKReady || function () {};
 
 // Clean up on page unload
 window.addEventListener("beforeunload", () => {
