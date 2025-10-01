@@ -1,0 +1,25 @@
+{
+  "name": "personal-website",
+  "version": "1.0.0",
+  "description": "Personal website with 3D rotating room",
+  "main": "index.html",
+  "scripts": {
+    "start": "live-server --port=3000 --open=/",
+    "dev": "live-server --port=3000 --open=/ --watch=.",
+    "build": "echo 'No build process needed for static site'",
+    "deploy": "gh-pages -d ."
+  },
+  "keywords": [
+    "personal",
+    "website",
+    "3d",
+    "threejs",
+    "portfolio"
+  ],
+  "author": "Sabrina Do",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.2",
+    "gh-pages": "^4.0.0"
+  }
+}
