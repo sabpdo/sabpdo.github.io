@@ -16,46 +16,124 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
   </head>
   <body>
-    <!-- Audio Player -->
-    <div class="audio-player">
-      <div class="audio-controls">
-        <button class="control-btn" id="rewind">
-          <i class="fas fa-backward"></i>
+    <!-- Music Player - Top Left -->
+    <div class="music-player">
+      <div class="music-header">
+        <div class="music-icon">🎵</div>
+        <div class="music-title">Now Playing</div>
+        <button class="music-toggle" id="music-toggle">
+          <i class="fas fa-music"></i>
         </button>
-        <button class="control-btn" id="play-pause">
-          <i class="fas fa-play"></i>
-        </button>
-        <button class="control-btn" id="forward">
-          <i class="fas fa-forward"></i>
-        </button>
-        <div class="volume-control">
-          <i class="fas fa-volume-up"></i>
-          <input type="range" id="volume" min="0" max="100" value="50" />
-        </div>
       </div>
-      <div class="track-info">
-        <div class="track-title">Sunset Bridge</div>
-        <div class="track-artist">ATLUS Sound Team</div>
-      </div>
-      <div class="progress-container">
-        <div class="progress-bar">
-          <div class="progress" id="progress"></div>
+      <div class="music-content" id="music-content">
+        <!-- Spotify Login Section -->
+        <div class="spotify-login" id="spotify-login">
+          <div class="login-icon">🎵</div>
+          <p>Connect to Spotify for music</p>
+          <button class="spotify-btn" id="spotify-login-btn">
+            <i class="fab fa-spotify"></i>
+            Login to Spotify
+          </button>
         </div>
-        <div class="time-display">
-          <span id="current-time">0:00</span>
-          <span id="duration">3:04</span>
+
+        <!-- Music Player (hidden until login) -->
+        <div
+          class="music-player-content"
+          id="music-player-content"
+          style="display: none"
+        >
+          <!-- Search Bar -->
+          <div class="search-container">
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Search for music..."
+            />
+            <button class="search-btn" id="search-btn">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+
+          <!-- Track Info -->
+          <div class="track-info">
+            <div class="album-art" id="album-art">
+              <div class="album-placeholder">🎵</div>
+            </div>
+            <div class="track-details">
+              <div class="track-title" id="track-title">Search for music</div>
+              <div class="track-artist" id="track-artist">
+                Use Spotify search
+              </div>
+            </div>
+          </div>
+
+          <!-- Music Controls -->
+          <div class="music-controls">
+            <button class="control-btn" id="rewind">
+              <i class="fas fa-backward"></i>
+            </button>
+            <button class="control-btn" id="play-pause">
+              <i class="fas fa-play"></i>
+            </button>
+            <button class="control-btn" id="forward">
+              <i class="fas fa-forward"></i>
+            </button>
+          </div>
+
+          <!-- Volume Control -->
+          <div class="volume-control">
+            <i class="fas fa-volume-up"></i>
+            <input type="range" id="volume" min="0" max="100" value="50" />
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="progress-container">
+            <div class="progress-bar">
+              <div class="progress" id="progress"></div>
+            </div>
+            <div class="time-display">
+              <span id="current-time">0:00</span>
+              <span id="duration">0:30</span>
+            </div>
+          </div>
+
+          <!-- Search Results -->
+          <div class="search-results" id="search-results" style="display: none">
+            <h4>Search Results</h4>
+            <div class="results-list" id="results-list"></div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Contact Links -->
-    <div class="contact-links">
+    <!-- Contact Card -->
+    <div class="contact-card">
       <span class="contact-label">Contact me:</span>
-      <a href="#" class="contact-link"><i class="fab fa-linkedin"></i></a>
-      <a href="#" class="contact-link"><i class="fas fa-envelope"></i></a>
-      <a href="#" class="contact-link"><i class="fab fa-github"></i></a>
+      <a
+        href="https://linkedin.com/in/sabrina-phuonglan-do"
+        class="contact-icon"
+        target="_blank"
+      >
+        <i class="fab fa-linkedin"></i>
+      </a>
+      <a href="mailto:sabpdo@mit.edu" class="contact-icon">
+        <i class="fas fa-envelope"></i>
+      </a>
+      <a href="https://github.com/sabpdo" class="contact-icon" target="_blank">
+        <i class="fab fa-github"></i>
+      </a>
+      <a href="https://twitter.com" class="contact-icon" target="_blank">
+        <i class="fab fa-twitter"></i>
+      </a>
       <button class="close-btn" id="close-modal">
         <i class="fas fa-times"></i>
       </button>
@@ -352,16 +430,83 @@
     </div>
 
     <div class="content-section" id="education">
-      <div class="section-content">
-        <h2>Education</h2>
-        <p>Your educational background...</p>
+      <div class="education-modal">
+        <div class="close-instruction">click anywhere to close!</div>
+        <div class="education-content">
+          <div class="education-card">
+            <div class="card-photo">
+              <div class="photo-placeholder">📸</div>
+            </div>
+            <div class="card-info">
+              <h3 class="student-name">SABRINA DO</h3>
+              <p class="institution-name">
+                Massachusetts Institute of Technology
+              </p>
+              <p class="degree">
+                Bachelor's of Computer Science and Engineering (6-3)
+              </p>
+              <p class="school-year">School Year: 2022-2026</p>
+            </div>
+            <div class="card-logo">
+              <div class="logo-placeholder">🎓</div>
+            </div>
+          </div>
+
+          <div class="education-card">
+            <div class="card-photo">
+              <div class="photo-placeholder">📸</div>
+            </div>
+            <div class="card-info">
+              <h3 class="student-name">SABRINA DO</h3>
+              <p class="institution-name">Sage Hill School</p>
+              <p class="degree">
+                High School Diploma: Valedictorian (4.81 GPA)
+              </p>
+            </div>
+            <div class="card-logo">
+              <div class="logo-placeholder">🏫</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="content-section" id="contact">
-      <div class="section-content">
-        <h2>Contact Me</h2>
-        <p>Get in touch...</p>
+      <div class="contact-modal">
+        <div class="close-instruction">click anywhere to close!</div>
+        <div class="contact-content">
+          <div class="contact-info">
+            <h2 class="contact-name">SABRINA DO</h2>
+            <p class="contact-title">CS Student at MIT</p>
+            <p class="contact-email">sabpdo@mit.edu</p>
+            <p class="contact-website">www.sabpdo.github.io</p>
+          </div>
+          <div class="contact-icons">
+            <a
+              href="https://linkedin.com/in/sabrina-phuonglan-do"
+              class="contact-icon"
+              target="_blank"
+            >
+              <i class="fab fa-linkedin"></i>
+            </a>
+            <a href="https://dribbble.com" class="contact-icon" target="_blank">
+              <i class="fab fa-dribbble"></i>
+            </a>
+            <a href="mailto:sabpdo@mit.edu" class="contact-icon">
+              <i class="fas fa-envelope"></i>
+            </a>
+            <a
+              href="https://github.com/sabpdo"
+              class="contact-icon"
+              target="_blank"
+            >
+              <i class="fab fa-github"></i>
+            </a>
+            <a href="Sabrina_Do_Resume.pdf" class="contact-icon" download>
+              <i class="fas fa-file-alt"></i>
+            </a>
+          </div>
+        </div>
       </div>
     </div>
 

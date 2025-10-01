@@ -295,9 +295,452 @@ body {
   animation: slideIn 0.5s ease-out;
 }
 
-/* Smooth transitions */
+/* Cute Font */
 * {
+  font-family: "Fredoka", cursive;
   transition: all 0.3s ease;
+}
+
+/* Music Player - Top Left */
+.music-player {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 280px;
+  max-width: 320px;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 182, 193, 0.3);
+}
+
+.music-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #ffb6c1, #ffc0cb);
+  border-radius: 13px 13px 0 0;
+  cursor: pointer;
+}
+
+.music-icon {
+  font-size: 20px;
+  margin-right: 8px;
+}
+
+.music-title {
+  flex: 1;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.music-toggle {
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #ff69b4;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+
+.music-toggle:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: scale(1.1);
+}
+
+.music-content {
+  padding: 16px;
+  display: none;
+}
+
+.music-content.show {
+  display: block;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.track-info {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.track-title {
+  font-weight: 600;
+  color: #333;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.track-artist {
+  color: #666;
+  font-size: 12px;
+}
+
+.music-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.control-btn {
+  background: linear-gradient(135deg, #ffb6c1, #ffc0cb);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #333;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(255, 182, 193, 0.3);
+}
+
+.control-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(255, 182, 193, 0.5);
+}
+
+.control-btn:active {
+  transform: scale(0.95);
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.volume-control i {
+  color: #ff69b4;
+  font-size: 14px;
+}
+
+.volume-control input[type="range"] {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: #ffb6c1;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.volume-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ff69b4;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.progress-container {
+  margin-top: 8px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #ffb6c1;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress {
+  height: 100%;
+  background: linear-gradient(90deg, #ff69b4, #ff1493);
+  width: 0%;
+  transition: width 0.1s ease;
+}
+
+.time-display {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #666;
+}
+
+/* Spotify Integration Styles */
+.spotify-login {
+  text-align: center;
+  padding: 20px;
+}
+
+.login-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.spotify-login p {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.spotify-btn {
+  background: #1db954;
+  color: white;
+  border: none;
+  border-radius: 25px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 auto;
+  transition: all 0.3s ease;
+}
+
+.spotify-btn:hover {
+  background: #1ed760;
+  transform: scale(1.05);
+}
+
+.spotify-btn i {
+  font-size: 16px;
+}
+
+.search-container {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.search-container input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid #ffb6c1;
+  border-radius: 20px;
+  outline: none;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.search-container input:focus {
+  border-color: #ff69b4;
+}
+
+.search-btn {
+  background: linear-gradient(135deg, #ffb6c1, #ffc0cb);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #333;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.search-btn:hover {
+  transform: scale(1.1);
+}
+
+.track-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.album-art {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #ffb6c1, #ffc0cb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.album-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.album-placeholder {
+  font-size: 20px;
+}
+
+.track-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.track-title {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-artist {
+  color: #666;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-results {
+  margin-top: 16px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.search-results h4 {
+  color: #333;
+  font-size: 12px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(255, 182, 193, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.result-item:hover {
+  background: rgba(255, 182, 193, 0.2);
+  transform: translateX(2px);
+}
+
+.result-item img {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.result-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-artist {
+  font-size: 10px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.play-preview {
+  background: #1db954;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  font-size: 10px;
+  transition: all 0.3s ease;
+}
+
+.play-preview:hover {
+  background: #1ed760;
+  transform: scale(1.1);
+}
+
+/* Music Player Responsive */
+@media (max-width: 768px) {
+  .music-player {
+    top: 10px;
+    left: 10px;
+    min-width: 250px;
+    max-width: 280px;
+  }
+
+  .music-header {
+    padding: 10px 12px;
+  }
+
+  .music-content {
+    padding: 12px;
+  }
+
+  .control-btn {
+    width: 35px;
+    height: 35px;
+    font-size: 12px;
+  }
+
+  .search-container input {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+
+  .album-art {
+    width: 40px;
+    height: 40px;
+  }
+
+  .track-title {
+    font-size: 12px;
+  }
+
+  .track-artist {
+    font-size: 10px;
+  }
 }
 
 /* Scrapbook Style About Me Modal */
@@ -307,7 +750,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.3);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -537,7 +980,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.3);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -734,7 +1177,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.3);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -956,7 +1399,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.3);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1138,5 +1581,349 @@ body {
 
   .resume-preview-date {
     white-space: normal;
+  }
+}
+
+/* Education Cards Modal */
+.education-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  cursor: pointer;
+}
+
+/* Contact Card Styles */
+.contact-card {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 10px;
+  padding: 15px 20px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  cursor: default;
+}
+
+.contact-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  cursor: pointer;
+}
+
+.contact-content {
+  background: #f5f5dc;
+  border-radius: 15px;
+  padding: 40px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  min-width: 450px;
+  max-width: 550px;
+  cursor: default;
+  display: flex;
+  gap: 40px;
+  align-items: center;
+  position: relative;
+}
+
+.contact-info {
+  flex: 1;
+}
+
+.contact-name {
+  font-size: 32px;
+  font-weight: bold;
+  color: #333;
+  margin: 0 0 8px 0;
+  letter-spacing: 1px;
+}
+
+.contact-title {
+  font-size: 18px;
+  color: #666;
+  margin: 0 0 16px 0;
+}
+
+.contact-email {
+  font-size: 16px;
+  color: #333;
+  margin: 0 0 8px 0;
+}
+
+.contact-website {
+  font-size: 16px;
+  color: #333;
+  margin: 0;
+}
+
+.contact-icons {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+.contact-icon {
+  width: 50px;
+  height: 50px;
+  background: #333;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  font-size: 18px;
+}
+
+.contact-icon:hover {
+  background: #555;
+  transform: scale(1.1);
+}
+
+.contact-label {
+  color: #ccc;
+  font-size: 14px;
+  margin-right: 10px;
+}
+
+.contact-icon {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.contact-icon:hover {
+  background: #555;
+  color: white;
+  transform: scale(1.05);
+}
+
+/* Contact Card Responsive */
+@media (max-width: 768px) {
+  .contact-card {
+    top: 10px;
+    right: 10px;
+    padding: 10px 15px;
+    gap: 10px;
+  }
+
+  .contact-label {
+    font-size: 12px;
+    margin-right: 8px;
+  }
+
+  .contact-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .contact-content {
+    min-width: 300px;
+    max-width: 350px;
+    padding: 20px;
+    flex-direction: column;
+    gap: 20px;
+    text-align: center;
+  }
+
+  .contact-name {
+    font-size: 24px;
+  }
+
+  .contact-icons {
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .contact-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+}
+
+.education-content {
+  background: #f8f9fa;
+  width: 90%;
+  max-width: 900px;
+  height: 90%;
+  max-height: 700px;
+  border-radius: 15px;
+  padding: 30px;
+  position: relative;
+  cursor: default;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.education-card {
+  background: #f5f5dc;
+  border-radius: 15px;
+  padding: 25px;
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-height: 120px;
+}
+
+.education-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.card-photo {
+  width: 100px;
+  height: 80px;
+  border-radius: 8px;
+  background: #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  flex-shrink: 0;
+  border: 2px solid #dee2e6;
+}
+
+.photo-placeholder {
+  color: #6c757d;
+}
+
+.card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.student-name {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  margin: 0 0 8px 0;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.institution-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 6px 0;
+}
+
+.degree {
+  font-size: 16px;
+  color: #555;
+  margin: 0 0 4px 0;
+}
+
+.school-year {
+  font-size: 14px;
+  color: #777;
+  margin: 0 0 4px 0;
+}
+
+.student-id {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+  font-family: "Courier New", monospace;
+  font-weight: 600;
+}
+
+.program-score {
+  font-size: 13px;
+  color: #28a745;
+  margin: 0;
+  font-weight: 600;
+}
+
+.card-logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+  border: 2px solid #e9ecef;
+}
+
+.logo-placeholder {
+  color: #6c757d;
+}
+
+/* Responsive adjustments for education cards */
+@media (max-width: 768px) {
+  .education-content {
+    width: 95%;
+    height: 95%;
+    padding: 20px;
+    gap: 15px;
+    grid-template-columns: 1fr;
+  }
+
+  .education-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
+  }
+
+  .card-photo {
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+  }
+
+  .card-logo {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+
+  .student-name {
+    font-size: 18px;
+  }
+
+  .institution-name {
+    font-size: 14px;
+  }
+
+  .degree {
+    font-size: 13px;
   }
 }
