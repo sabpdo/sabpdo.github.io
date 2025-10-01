@@ -1881,6 +1881,9 @@ body {
   font-size: 24px;
   flex-shrink: 0;
   border: 2px solid #e9ecef;
+  position: absolute;
+  top: 15px;
+  right: 15px;
 }
 
 .logo-placeholder {
