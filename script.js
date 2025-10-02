@@ -1707,6 +1707,7 @@ class SpotifyMusicPlayer {
     this.initializeElements();
     this.setupEventListeners();
     this.initializeDefaultMusic();
+    this.setupResponsiveHandling();
   }
 
   initializeElements() {
@@ -1813,10 +1814,25 @@ class SpotifyMusicPlayer {
   }
 
   initializeDefaultMusic() {
-    // Set initial state as expanded since we want to show the embed
-    this.isExpanded = true;
-    // Show the default embed immediately when the page loads
-    this.showDefaultEmbed();
+    // Check if device is mobile
+    const isMobile =
+      window.innerWidth <= 768 ||
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      );
+
+    if (isMobile) {
+      // On mobile, start with music player closed
+      this.isExpanded = false;
+      this.musicContent.classList.remove("show");
+      this.musicToggle.innerHTML = '<i class="fas fa-music"></i>';
+      // Don't show the embed by default on mobile
+    } else {
+      // On desktop, set initial state as expanded since we want to show the embed
+      this.isExpanded = true;
+      // Show the default embed immediately when the page loads
+      this.showDefaultEmbed();
+    }
   }
 
   playDefaultTrack() {
@@ -1912,6 +1928,22 @@ class SpotifyMusicPlayer {
     if (embed && embed.parentNode) {
       embed.parentNode.insertBefore(loginBtn, embed.nextSibling);
     }
+  }
+
+  setupResponsiveHandling() {
+    // Handle window resize and orientation changes
+    window.addEventListener("resize", () => {
+      const isMobile =
+        window.innerWidth <= 768 ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        );
+
+      if (isMobile && this.isExpanded) {
+        // If switching to mobile and music player is open, close it
+        this.toggleExpanded();
+      }
+    });
   }
 
   async loginToSpotify() {
