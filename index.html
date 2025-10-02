@@ -5,32 +5,73 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sabrina Do - Personal Website</title>
     <link rel="stylesheet" href="styles.css" />
+    <!-- Critical Three.js core - load immediately -->
     <script
       src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
       onerror="console.error('Failed to load Three.js from CDN')"
     ></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/ConvolutionShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/UnpackDepthRGBAShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-      rel="stylesheet"
-    />
+
+    <!-- Preconnect to external domains for faster loading -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://sdk.scdn.co" />
+
+    <!-- Load essential Three.js loaders immediately -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+
+    <!-- Critical styles - load immediately -->
     <link
       href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+
+    <!-- Non-critical resources - load after page load -->
+    <script>
+      // Load non-critical scripts after page load
+      window.addEventListener("load", function () {
+        // Load Three.js extensions (loaders are loaded immediately above)
+        const scripts = [
+          "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js",
+          "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/ConvolutionShader.js",
+          "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/UnpackDepthRGBAShader.js",
+          "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js",
+          "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js",
+          "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js",
+          "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js",
+          "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js",
+        ];
+
+        scripts.forEach((src, index) => {
+          setTimeout(() => {
+            const script = document.createElement("script");
+            script.src = src;
+            script.async = true;
+            document.head.appendChild(script);
+          }, index * 100); // Stagger loading
+        });
+
+        // Load Font Awesome after a delay
+        setTimeout(() => {
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href =
+            "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css";
+          document.head.appendChild(link);
+        }, 500);
+
+        // Load Spotify SDK only when needed
+        setTimeout(() => {
+          const script = document.createElement("script");
+          script.src = "https://sdk.scdn.co/spotify-player.js";
+          script.async = true;
+          document.head.appendChild(script);
+        }, 1000);
+      });
+    </script>
   </head>
   <body>
     <!-- Loading Screen -->
@@ -38,6 +79,12 @@
       <div class="loading-content">
         <div class="loading-spinner"></div>
         <h2 class="loading-text">please wait a little... loading!</h2>
+        <div class="loading-progress">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="progress-text" id="progress-text">0%</div>
+        </div>
       </div>
     </div>
 
@@ -180,7 +227,17 @@
               <div class="hero-section">
                 <div class="photo-container">
                   <div class="photo-frame">
-                    <img src="asset_images/Headshot.jpeg" alt="Sabrina Do" />
+                    <picture>
+                      <source
+                        srcset="asset_images/Headshot.webp"
+                        type="image/webp"
+                      />
+                      <img
+                        src="asset_images/Headshot.jpeg"
+                        alt="Sabrina Do"
+                        loading="lazy"
+                      />
+                    </picture>
                     <div class="photo-overlay">
                       <div class="sparkle sparkle-1">✨</div>
                       <div class="sparkle sparkle-2">✨</div>
@@ -1729,6 +1786,6 @@
       </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.min.js"></script>
   </body>
 </html>

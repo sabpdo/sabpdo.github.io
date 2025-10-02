@@ -60,7 +60,37 @@
   font-size: 18px;
   font-weight: 500;
   color: #f8bbd9;
-  margin: 0;
+  margin: 0 0 20px 0;
+}
+
+.loading-progress {
+  width: 200px;
+  margin: 0 auto;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f8bbd9, #ff69b4);
+  width: 0%;
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+.progress-text {
+  font-family: "Fredoka", sans-serif;
+  font-size: 14px;
+  color: #f8bbd9;
+  text-align: center;
+  font-weight: 500;
 }
 
 body {
@@ -71,6 +101,10 @@ body {
   height: 100vh;
   margin: 0;
   padding: 0;
+  /* Performance optimizations */
+  will-change: auto;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 html {
@@ -228,6 +262,14 @@ html {
   display: block;
   margin: 0;
   padding: 0;
+  /* Performance optimizations for 3D canvas */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  image-rendering: optimizeSpeed;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: optimize-contrast;
 }
 
 .room-reflection {
