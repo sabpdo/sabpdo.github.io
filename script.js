@@ -1814,21 +1814,24 @@ class SpotifyMusicPlayer {
   }
 
   initializeDefaultMusic() {
-    // Check if device is mobile
+    // Check if device is mobile or has small width screen
     const isMobile =
       window.innerWidth <= 768 ||
       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
         navigator.userAgent
       );
 
-    if (isMobile) {
-      // On mobile, start with music player closed
+    // Check if screen width is small (less than 1024px)
+    const isSmallWidth = window.innerWidth < 1024;
+
+    if (isMobile || isSmallWidth) {
+      // On mobile or small width screens, start with music player closed
       this.isExpanded = false;
       this.musicContent.classList.remove("show");
       this.musicToggle.innerHTML = '<i class="fas fa-music"></i>';
-      // Don't show the embed by default on mobile
+      // Don't show the embed by default on mobile or small screens
     } else {
-      // On desktop, set initial state as expanded since we want to show the embed
+      // On desktop with larger screens, set initial state as expanded since we want to show the embed
       this.isExpanded = true;
       // Show the default embed immediately when the page loads
       this.showDefaultEmbed();
@@ -1939,8 +1942,11 @@ class SpotifyMusicPlayer {
           navigator.userAgent
         );
 
-      if (isMobile && this.isExpanded) {
-        // If switching to mobile and music player is open, close it
+      // Check if screen width is small (less than 1024px)
+      const isSmallWidth = window.innerWidth < 1024;
+
+      if ((isMobile || isSmallWidth) && this.isExpanded) {
+        // If switching to mobile or small width screen and music player is open, close it
         this.toggleExpanded();
       }
     });
