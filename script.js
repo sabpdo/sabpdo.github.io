@@ -1582,12 +1582,22 @@ function showContentSection(sectionId) {
   // Hide all content sections
   hideAllContentSections();
 
+  // Hide music player when modal opens
+  hideMusicPlayer();
+
   // Small delay to ensure smooth transition
   setTimeout(() => {
     // Show the selected section
     const targetSection = document.getElementById(sectionId);
     if (targetSection) {
       targetSection.classList.add("active");
+
+      // Special handling for experience section
+      if (sectionId === "experience") {
+        console.log(
+          "Experience section opened - music player should be hidden"
+        );
+      }
     }
   }, 50);
 }
@@ -1604,9 +1614,26 @@ function hideAllContentSections() {
       setTimeout(() => {
         section.classList.remove("active");
         section.style.animation = "";
+        // Show music player when modal closes
+        showMusicPlayer();
       }, 300);
     }
   });
+}
+
+// Music player visibility functions
+function hideMusicPlayer() {
+  const musicPlayer = document.querySelector(".music-player");
+  if (musicPlayer) {
+    musicPlayer.style.display = "none";
+  }
+}
+
+function showMusicPlayer() {
+  const musicPlayer = document.querySelector(".music-player");
+  if (musicPlayer) {
+    musicPlayer.style.display = "block";
+  }
 }
 
 // Audio player functionality
@@ -2573,6 +2600,8 @@ function closeBriefcaseModal() {
   const experienceSection = document.getElementById("experience");
   if (experienceSection) {
     experienceSection.classList.remove("active");
+    // Show music player when experience modal closes
+    showMusicPlayer();
   }
 }
 
