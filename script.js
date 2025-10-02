@@ -2142,6 +2142,210 @@ function initProjectFolders() {
   });
 }
 
+// Briefcase Experience Animations
+function initBriefcaseAnimations() {
+  const briefcaseModal = document.querySelector(".briefcase-modal");
+  const experienceCards = document.querySelectorAll(".experience-card");
+  const statBadges = document.querySelectorAll(".stat-badge");
+  const companyLogos = document.querySelectorAll(".company-logo");
+  const techTags = document.querySelectorAll(".tech-tag");
+  const highlightItems = document.querySelectorAll(".highlight-item");
+
+  // Add staggered animation to experience cards on hover
+  experienceCards.forEach((card, index) => {
+    card.addEventListener("mouseenter", () => {
+      // Add a subtle glow effect
+      card.style.boxShadow =
+        "0 25px 50px rgba(102, 126, 234, 0.2), 0 0 0 1px rgba(102, 126, 234, 0.3)";
+
+      // Animate the company logo
+      const logo = card.querySelector(".company-logo");
+      if (logo) {
+        logo.style.transform = "scale(1.15) rotate(10deg)";
+        logo.style.transition = "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+      }
+
+      // Animate tech tags
+      const tags = card.querySelectorAll(".tech-tag");
+      tags.forEach((tag, tagIndex) => {
+        setTimeout(() => {
+          tag.style.transform = "translateY(-3px) scale(1.05)";
+          tag.style.transition = "transform 0.2s ease";
+        }, tagIndex * 50);
+      });
+
+      // Animate highlight items
+      const highlights = card.querySelectorAll(".highlight-item");
+      highlights.forEach((item, itemIndex) => {
+        setTimeout(() => {
+          item.style.transform = "translateY(-2px) scale(1.02)";
+          item.style.transition = "transform 0.2s ease";
+        }, itemIndex * 100);
+      });
+    });
+
+    card.addEventListener("mouseleave", () => {
+      // Reset all animations
+      card.style.boxShadow = "";
+
+      const logo = card.querySelector(".company-logo");
+      if (logo) {
+        logo.style.transform = "";
+      }
+
+      const tags = card.querySelectorAll(".tech-tag");
+      tags.forEach((tag) => {
+        tag.style.transform = "";
+      });
+
+      const highlights = card.querySelectorAll(".highlight-item");
+      highlights.forEach((item) => {
+        item.style.transform = "";
+      });
+    });
+  });
+
+  // Add click animation to stat badges
+  statBadges.forEach((badge) => {
+    badge.addEventListener("click", () => {
+      badge.style.transform = "scale(0.95)";
+      setTimeout(() => {
+        badge.style.transform = "";
+      }, 150);
+    });
+  });
+
+  // Add ripple effect to company logos
+  companyLogos.forEach((logo) => {
+    logo.addEventListener("click", (e) => {
+      const ripple = document.createElement("div");
+      const rect = logo.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const x = e.clientX - rect.left - size / 2;
+      const y = e.clientY - rect.top - size / 2;
+
+      ripple.style.cssText = `
+        position: absolute;
+        width: ${size}px;
+        height: ${size}px;
+        left: ${x}px;
+        top: ${y}px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        transform: scale(0);
+        animation: ripple 0.6s ease-out;
+        pointer-events: none;
+      `;
+
+      logo.style.position = "relative";
+      logo.style.overflow = "hidden";
+      logo.appendChild(ripple);
+
+      setTimeout(() => {
+        ripple.remove();
+      }, 600);
+    });
+  });
+
+  // Add CSS for ripple animation
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes ripple {
+      to {
+        transform: scale(2);
+        opacity: 0;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+
+  // Add floating animation to tech tags
+  techTags.forEach((tag, index) => {
+    tag.addEventListener("mouseenter", () => {
+      tag.style.transform = "translateY(-4px) scale(1.1)";
+      tag.style.boxShadow = "0 8px 20px rgba(102, 126, 234, 0.3)";
+    });
+
+    tag.addEventListener("mouseleave", () => {
+      tag.style.transform = "";
+      tag.style.boxShadow = "";
+    });
+  });
+
+  // Add typewriter effect to achievement descriptions
+  const achievementDescriptions = document.querySelectorAll(
+    ".achievement-description p"
+  );
+  achievementDescriptions.forEach((desc, index) => {
+    const originalText = desc.textContent;
+    desc.textContent = "";
+    desc.style.borderRight = "2px solid #667eea";
+    desc.style.animation = "blink 1s infinite";
+
+    setTimeout(() => {
+      let i = 0;
+      const typeWriter = () => {
+        if (i < originalText.length) {
+          desc.textContent += originalText.charAt(i);
+          i++;
+          setTimeout(typeWriter, 20);
+        } else {
+          desc.style.borderRight = "none";
+          desc.style.animation = "none";
+        }
+      };
+      typeWriter();
+    }, 2000 + index * 1000);
+  });
+
+  // Add blink animation for typewriter effect
+  const blinkStyle = document.createElement("style");
+  blinkStyle.textContent = `
+    @keyframes blink {
+      0%, 50% { border-color: #667eea; }
+      51%, 100% { border-color: transparent; }
+    }
+  `;
+  document.head.appendChild(blinkStyle);
+}
+
+// Collapsible Section Functionality
+function toggleSection(sectionName) {
+  const content = document.getElementById(sectionName + "-content");
+  const button = document.querySelector(
+    `[onclick="toggleSection('${sectionName}')"]`
+  );
+  const icon = button.querySelector("i");
+
+  if (content.classList.contains("collapsed")) {
+    // Expand section
+    content.classList.remove("collapsed");
+    button.classList.remove("collapsed");
+    // Delay icon rotation slightly for smoother animation
+    setTimeout(() => {
+      icon.style.transform = "rotate(0deg)";
+    }, 50);
+  } else {
+    // Collapse section
+    content.classList.add("collapsed");
+    button.classList.add("collapsed");
+    icon.style.transform = "rotate(-90deg)";
+  }
+}
+
+// Close Briefcase Modal Function
+function closeBriefcaseModal() {
+  const experienceSection = document.getElementById("experience");
+  if (experienceSection) {
+    experienceSection.classList.remove("active");
+  }
+}
+
+// Initialize briefcase animations when DOM is loaded
+document.addEventListener("DOMContentLoaded", () => {
+  initBriefcaseAnimations();
+});
+
 // Clean up on page unload
 window.addEventListener("beforeunload", () => {
   if (animationId) {
