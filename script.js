@@ -160,6 +160,9 @@ function hideLoadingScreen() {
     // Hide loading screen much faster since we're loading progressively
     setTimeout(() => {
       loadingScreen.classList.add("hidden");
+      // Remove loading class and re-enable scrolling when loading screen is hidden
+      document.body.classList.remove("loading");
+      enableBodyScroll();
       // Remove from DOM after fade out
       setTimeout(() => {
         if (loadingScreen.parentNode) {
@@ -1060,7 +1063,7 @@ function createWalls() {
   room.add(floor);
 
   // Darker base layer underneath the wooden floor
-  const floorBaseGeometry = new THREE.BoxGeometry(10.2, 0.3, 10.2); // Slightly larger and thinner
+  const floorBaseGeometry = new THREE.BoxGeometry(10.5, 0.3, 10.2); // Slightly larger and thinner
   const floorBaseMaterial = new THREE.MeshLambertMaterial({
     color: 0x2c1810, // Very dark brown/black base
   });
@@ -1071,9 +1074,10 @@ function createWalls() {
   room.add(floorBase);
 
   // Back wall - made thicker and slightly taller
-  const backWallGeometry = new THREE.BoxGeometry(10, 8, 0.3); // Increased height to 7.5 units
+  const backWallGeometry = new THREE.BoxGeometry(10.5, 8.4, 0.3); // Increased height to 7.5 units
   const backWall = new THREE.Mesh(backWallGeometry, backWallMaterial);
   backWall.position.z = -5.15; // Adjusted position to account for thickness
+  backWall.position.x = -0.10; // Adjusted position to account for thickness
   backWall.position.y = 1.5; // Centered between floor bottom (-2.75) and new top (4.5): (-2.75 + 4.5) / 2 = 0.875
   backWall.castShadow = true;
   backWall.receiveShadow = true;
@@ -1081,7 +1085,7 @@ function createWalls() {
 
   // Create left wall with actual window opening
   // Build the wall in sections to create a real opening
-  const leftWallTopGeometry = new THREE.BoxGeometry(0.3, 2.3, 10);
+  const leftWallTopGeometry = new THREE.BoxGeometry(0.3, 2.2, 10);
   const leftWallTop = new THREE.Mesh(leftWallTopGeometry, leftWallMaterial);
   leftWallTop.position.x = -5.15;
   leftWallTop.position.y = 4.4; // Position above the window
@@ -1089,7 +1093,7 @@ function createWalls() {
   leftWallTop.receiveShadow = true;
   room.add(leftWallTop);
 
-  const leftWallBottomGeometry = new THREE.BoxGeometry(0.3, 3, 10);
+  const leftWallBottomGeometry = new THREE.BoxGeometry(0.3, 3.5, 10);
   const leftWallBottom = new THREE.Mesh(
     leftWallBottomGeometry,
     leftWallMaterial
@@ -1101,27 +1105,27 @@ function createWalls() {
   room.add(leftWallBottom);
 
   // Left section of wall (to the left of window) - shifted left
-  const leftWallLeftGeometry = new THREE.BoxGeometry(0.3, 5, 2.9); // Height of window, wider to left edge
+  const leftWallLeftGeometry = new THREE.BoxGeometry(0.3, 3, 2.9); // Height of window, wider to left edge
   const leftWallLeft = new THREE.Mesh(leftWallLeftGeometry, leftWallMaterial);
   leftWallLeft.position.x = -5.15;
-  leftWallLeft.position.y = 1.5;
+  leftWallLeft.position.y = 2;
   leftWallLeft.position.z = -3.55; // Position further left
   leftWallLeft.castShadow = true;
   leftWallLeft.receiveShadow = true;
   room.add(leftWallLeft);
 
   // Right section of wall (to the right of window) - smaller since window is shifted left
-  const leftWallRightGeometry = new THREE.BoxGeometry(0.3, 5, 6); // Height of window, narrower to right edge
+  const leftWallRightGeometry = new THREE.BoxGeometry(0.3, 3, 6); // Height of window, narrower to right edge
   const leftWallRight = new THREE.Mesh(leftWallRightGeometry, leftWallMaterial);
   leftWallRight.position.x = -5.15;
-  leftWallRight.position.y = 1.5;
+  leftWallRight.position.y = 2;
   leftWallRight.position.z = 2; // Position closer to center
   leftWallRight.castShadow = true;
   leftWallRight.receiveShadow = true;
   room.add(leftWallRight);
 
   // Top border/trim for back wall
-  const backWallTrimGeometry = new THREE.BoxGeometry(10, 0.3, 0.6); // Dark brown trim
+  const backWallTrimGeometry = new THREE.BoxGeometry(10.6, 0.3, 0.6); // Dark brown trim
   const backWallTrimMaterial = new THREE.MeshLambertMaterial({
     color: 0x654321,
   }); // Rich dark brown color
@@ -1130,6 +1134,7 @@ function createWalls() {
     backWallTrimMaterial
   );
   backWallTrim.position.z = -5.1; // Positioned at the front edge of the wall
+  backWallTrim.position.x = -0.12; // Adjusted position to account for thickness
   backWallTrim.position.y = 5.65; // Positioned at the top of the wall
   backWallTrim.castShadow = true;
   backWallTrim.receiveShadow = true;
@@ -1758,6 +1763,9 @@ function showContentSection(sectionId) {
   // Hide music player when modal opens
   hideMusicPlayer();
 
+  // Prevent scrolling when modal opens
+  preventBodyScroll();
+
   // Small delay to ensure smooth transition
   setTimeout(() => {
     // Show the selected section
@@ -1779,19 +1787,56 @@ function hideAllContentSections() {
   const contentSections = document.querySelectorAll(".content-section");
   contentSections.forEach((section) => {
     if (section.classList.contains("active")) {
-      // Add fade-out animation
-      section.style.animation =
-        "modalFadeOut 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+      // Add fade-out animation to the modal content first
+      const modalContent = section.querySelector(
+        ".scrapbook-content, .desktop-window, .briefcase-container, .education-content, .contact-content"
+      );
 
-      // Remove active class after animation completes
-      setTimeout(() => {
-        section.classList.remove("active");
-        section.style.animation = "";
-        // Show music player when modal closes
-        showMusicPlayer();
-      }, 300);
+      if (modalContent) {
+        modalContent.style.animation =
+          "modalFadeOut 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+      }
+
+      // Hide the backdrop immediately by removing active class and setting display
+      section.classList.remove("active");
+      section.style.display = "none";
+
+      // Clear animation after it completes
+      if (modalContent) {
+        setTimeout(() => {
+          modalContent.style.animation = "";
+          section.style.display = ""; // Reset display property
+        }, 300);
+      } else {
+        section.style.display = ""; // Reset display property immediately if no modal content
+      }
+
+      // Show music player when modal closes
+      showMusicPlayer();
+
+      // Re-enable scrolling when modal closes
+      enableBodyScroll();
     }
   });
+}
+
+// Prevent scrolling when modals are open
+function preventBodyScroll() {
+  document.body.style.overflow = "hidden";
+  document.body.style.position = "fixed";
+  document.body.style.width = "100%";
+  document.body.style.top = `-${window.scrollY}px`;
+}
+
+function enableBodyScroll() {
+  const scrollY = document.body.style.top;
+  document.body.style.overflow = "";
+  document.body.style.position = "";
+  document.body.style.width = "";
+  document.body.style.top = "";
+  if (scrollY) {
+    window.scrollTo(0, parseInt(scrollY || "0") * -1);
+  }
 }
 
 // Music player visibility functions
@@ -1845,6 +1890,10 @@ function waitForThreeJS() {
 // Initialize everything when page loads
 document.addEventListener("DOMContentLoaded", () => {
   console.log("DOM loaded, initializing...");
+
+  // Add loading class to body and prevent scrolling during loading
+  document.body.classList.add("loading");
+  preventBodyScroll();
 
   // Wait for Three.js to load
   waitForThreeJS();
@@ -2811,8 +2860,11 @@ function closeBriefcaseModal() {
   const experienceSection = document.getElementById("experience");
   if (experienceSection) {
     experienceSection.classList.remove("active");
+    experienceSection.style.display = "none";
     // Show music player when experience modal closes
     showMusicPlayer();
+    // Re-enable scrolling when modal closes
+    enableBodyScroll();
   }
 }
 
