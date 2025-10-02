@@ -2619,7 +2619,6 @@ function initProjectFolders() {
       "https://github.com/sabpdo/Unity-Triangle_Completion",
     "leftover-love": "https://leftover-love.vercel.app/welcome",
     "eco-calc": "https://devpost.com/software/eco-calc",
-    compiler: "https://github.com/6110-sp25/sp25-team1-waffle",
     qoom: "https://kindswan26.qoom.space/edit/Unnamed/index.html",
     portfolio: "#", // Current page
     more: "https://github.com/sabpdo",

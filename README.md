@@ -47,7 +47,9 @@ Opens at http://localhost:3000 with live reload
 
 ## Minimization
 
-To facilitate loading, I minimize the script size with 
+To facilitate efficient loading, I minimize the script size with 
 ```
 cd /Users/sabrinado/sabpdo.github.io-1 && npx terser script.js -o script.min.js -c -m
 ```
+
+This means anything you update `script.js` you need to run this command for it to be reflected.
