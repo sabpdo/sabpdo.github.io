@@ -423,6 +423,7 @@ function createRoom() {
   createWindow();
   createAdditionalWindows();
   createLights();
+  createSunlightBeams();
 
   // Create room reflection underneath the floor
   createMirrorReflection();
@@ -889,7 +890,7 @@ function createWalls() {
   const leftWallRight = new THREE.Mesh(leftWallRightGeometry, leftWallMaterial);
   leftWallRight.position.x = -5.15;
   leftWallRight.position.y = 1.5;
-  leftWallRight.position.z = 2.; // Position closer to center
+  leftWallRight.position.z = 2; // Position closer to center
   leftWallRight.castShadow = true;
   leftWallRight.receiveShadow = true;
   room.add(leftWallRight);
@@ -1161,6 +1162,30 @@ function animateGlowingBooks() {
   }
 }
 
+// Animate the sunlight beams effect
+function animateSunlightBeams() {
+  if (window.sunlightBeams) {
+    window.sunlightBeams.forEach((sunlightGroup) => {
+      sunlightGroup.children.forEach((beam) => {
+        if (beam.userData && beam.material) {
+          // Create a gentle periodic glow effect
+          const time = Date.now() * 0.001; // Convert to seconds
+          const glow =
+            Math.sin(
+              time * beam.userData.animationSpeed +
+                beam.userData.animationOffset
+            ) *
+              0.3 +
+            0.7; // Glow between 0.4 and 1.0 opacity
+
+          // Update opacity with gentle glow effect
+          beam.material.opacity = beam.userData.originalOpacity * glow;
+        }
+      });
+    });
+  }
+}
+
 function createWindow() {
   // Replace created window with GLB window asset if available
   const win = prepareAsset(loadedAssets.windowAsset);
@@ -1169,7 +1194,7 @@ function createWindow() {
     win.rotation.y = Math.PI;
     win.scale.set(0.05, 0.05, 0.05);
     room.add(win);
-  } 
+  }
 
   // Optional sky-blue pane behind the window opening for a pleasant view
   const skyPaneGeometry = new THREE.PlaneGeometry(1.2, 3);
@@ -1214,6 +1239,106 @@ function createLights() {
   }
 }
 
+function createSunlightBeams() {
+  // Create a group to hold all sunlight beams
+  const sunlightGroup = new THREE.Group();
+  sunlightGroup.name = "sunlightBeams";
+
+  // Window position and dimensions (from createWindow function)
+  const windowX = -5.15;
+  const windowY = 2;
+  const windowZ = -1.5;
+  const windowWidth = 1.2;
+  const windowHeight = 3;
+
+  // Create streamlined beams - fewer, more focused
+  const numBeams = 4; // Fewer beams for more natural look
+  const beamLength = 2.5; // Shorter beams for more natural look
+  const beamWidth = 0.03; // Much thinner for subtle effect
+  const beamHeight = 0.05; // Shorter for more natural appearance
+
+  for (let i = 0; i < numBeams; i++) {
+    // Add natural variation to beam length
+    const lengthVariation = 0.7 + Math.random() * 0.6; // 70% to 130% of base length
+    const currentBeamLength = beamLength * lengthVariation;
+
+    // Create beam geometry - a long, streamlined box
+    const beamGeometry = new THREE.BoxGeometry(
+      beamWidth,
+      beamHeight,
+      currentBeamLength
+    );
+
+    // Create beam material with softer, more natural sunlight
+    const beamMaterial = new THREE.MeshBasicMaterial({
+      color: 0xfff8f0, // Softer, warmer sunlight color
+      transparent: true,
+      opacity: 0.1 + Math.random() * 0.15, // Much lower opacity for subtlety (0.1 to 0.25)
+      side: THREE.DoubleSide,
+      blending: THREE.NormalBlending, // Normal blending for softer look
+      depthWrite: false, // Prevent z-fighting
+    });
+
+    const beam = new THREE.Mesh(beamGeometry, beamMaterial);
+
+    // Position beams to target the bed area
+    const xOffset = (Math.random() - 0.5) * windowWidth * 0.6; // Focus on center of window
+    const yOffset = (Math.random() - 0.5) * windowHeight * 0.4; // Focus on upper portion of window
+
+    beam.position.set(
+      windowX + 1, // Much further in front of the window for dramatic streaming effect
+      windowY + yOffset,
+      windowZ + xOffset + 0.25
+    );
+
+    // Calculate angle to target the bed area
+    // Bed is positioned around (-1.95, -1.75, -4.5) based on the code
+    const bedX = -25;
+    const bedY = -300;
+    const bedZ = -20;
+
+    // Calculate direction from window to bed
+    const directionX = bedX - beam.position.x;
+    const directionY = bedY - beam.position.y;
+    const directionZ = bedZ - beam.position.z;
+
+    // Calculate rotation angles to point toward bed with natural variation
+    const yAngle = Math.atan2(directionX, directionZ) + 0.5 * 0.3; // Add slight horizontal variation
+    const xAngle =
+      -Math.atan2(
+        directionY,
+        Math.sqrt(directionX * directionX + directionZ * directionZ)
+      ) -
+      Math.PI / 5 +
+      (Math.random() - 0.5) * 0.2; // Add slight vertical variation
+
+    beam.rotation.set(xAngle, yAngle, 0); // Point toward bed with natural variation
+
+    // Consistent scale for streamlined appearance
+    beam.scale.set(1, 1, 1);
+
+    // Store animation data for glow effect only
+    beam.userData = {
+      originalOpacity: beamMaterial.opacity,
+      animationOffset: (i / numBeams) * Math.PI * 2, // Staggered phase for wave effect
+      animationSpeed: 0.3, // Slower, more gentle animation
+    };
+
+    sunlightGroup.add(beam);
+  }
+
+  // Add the sunlight group to the room
+  room.add(sunlightGroup);
+
+  // Store reference for animation
+  if (!window.sunlightBeams) {
+    window.sunlightBeams = [];
+  }
+  window.sunlightBeams.push(sunlightGroup);
+
+  console.log("Streamlined sunlight beams created successfully!");
+}
+
 // Animation loop
 function animate() {
   animationId = requestAnimationFrame(animate);
@@ -1230,6 +1355,9 @@ function animate() {
 
   // Animate glowing books
   animateGlowingBooks();
+
+  // Animate sunlight beams
+  animateSunlightBeams();
 
   if (renderer && scene && camera) {
     renderer.render(scene, camera);
@@ -1326,11 +1454,11 @@ function initModal() {
   const desktopModal = document.querySelector(".desktop-modal");
   if (desktopModal) {
     desktopModal.addEventListener("click", (e) => {
-      if (e.target === desktopModal) {
-        // Small delay to prevent immediate closing during transition
-        setTimeout(() => {
-          hideAllContentSections();
-        }, 100);
+      if (
+        e.target === desktopModal ||
+        e.target.classList.contains("close-instruction")
+      ) {
+        hideAllContentSections();
       }
     });
   }
@@ -1339,11 +1467,11 @@ function initModal() {
   const resumePreviewModal = document.querySelector(".resume-preview-modal");
   if (resumePreviewModal) {
     resumePreviewModal.addEventListener("click", (e) => {
-      if (e.target === resumePreviewModal) {
-        // Small delay to prevent immediate closing during transition
-        setTimeout(() => {
-          hideAllContentSections();
-        }, 100);
+      if (
+        e.target === resumePreviewModal ||
+        e.target.classList.contains("close-instruction")
+      ) {
+        hideAllContentSections();
       }
     });
   }
@@ -1352,11 +1480,11 @@ function initModal() {
   const educationModal = document.querySelector(".education-modal");
   if (educationModal) {
     educationModal.addEventListener("click", (e) => {
-      if (e.target === educationModal) {
-        // Small delay to prevent immediate closing during transition
-        setTimeout(() => {
-          hideAllContentSections();
-        }, 100);
+      if (
+        e.target === educationModal ||
+        e.target.classList.contains("close-instruction")
+      ) {
+        hideAllContentSections();
       }
     });
   }
@@ -1365,14 +1493,34 @@ function initModal() {
   const contactModal = document.querySelector(".contact-modal");
   if (contactModal) {
     contactModal.addEventListener("click", (e) => {
-      if (e.target === contactModal) {
-        // Small delay to prevent immediate closing during transition
-        setTimeout(() => {
-          hideAllContentSections();
-        }, 100);
+      if (
+        e.target === contactModal ||
+        e.target.classList.contains("close-instruction")
+      ) {
+        hideAllContentSections();
       }
     });
   }
+
+  // Universal click outside handler for all modals
+  document.addEventListener("click", (e) => {
+    // Check if any modal is active
+    const activeModal = document.querySelector(".content-section.active");
+    if (activeModal) {
+      const modalContent = activeModal.querySelector(
+        ".scrapbook-content, .desktop-window, .resume-preview-content, .education-content, .contact-content"
+      );
+
+      // If click is outside the modal content and not on a nav link
+      if (
+        modalContent &&
+        !modalContent.contains(e.target) &&
+        !e.target.closest(".nav-link")
+      ) {
+        hideAllContentSections();
+      }
+    }
+  });
 }
 
 function showContentSection(sectionId) {
@@ -1392,7 +1540,17 @@ function showContentSection(sectionId) {
 function hideAllContentSections() {
   const contentSections = document.querySelectorAll(".content-section");
   contentSections.forEach((section) => {
-    section.classList.remove("active");
+    if (section.classList.contains("active")) {
+      // Add fade-out animation
+      section.style.animation =
+        "modalFadeOut 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+
+      // Remove active class after animation completes
+      setTimeout(() => {
+        section.classList.remove("active");
+        section.style.animation = "";
+      }, 300);
+    }
   });
 }
 
