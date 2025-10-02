@@ -697,7 +697,7 @@ function addMouseControls() {
 
       // Update camera angles (inverted for natural grabbing feel)
       targetCameraAngleY -= deltaX * 0.01;
-      targetCameraAngleX -= deltaY * 0.01;
+      targetCameraAngleX += deltaY * 0.01;
 
       // Limit vertical angle to prevent going below 90 degrees with ground
       targetCameraAngleX = Math.max(
