@@ -45,14 +45,32 @@
           "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js",
         ];
 
-        scripts.forEach((src, index) => {
-          setTimeout(() => {
+        // Load scripts sequentially to ensure proper dependencies
+        const loadScript = (src) => {
+          return new Promise((resolve, reject) => {
             const script = document.createElement("script");
             script.src = src;
-            script.async = true;
+            script.onload = resolve;
+            script.onerror = reject;
             document.head.appendChild(script);
-          }, index * 100); // Stagger loading
-        });
+          });
+        };
+
+        // Load scripts in order with proper dependencies
+        loadScript(scripts[0]) // CopyShader
+          .then(() => loadScript(scripts[1])) // ConvolutionShader
+          .then(() => loadScript(scripts[2])) // UnpackDepthRGBAShader
+          .then(() => loadScript(scripts[3])) // LuminosityHighPassShader
+          .then(() => loadScript(scripts[4])) // EffectComposer
+          .then(() => loadScript(scripts[5])) // RenderPass
+          .then(() => loadScript(scripts[6])) // ShaderPass
+          .then(() => loadScript(scripts[7])) // UnrealBloomPass
+          .catch((error) => {
+            console.warn(
+              "Some Three.js post-processing scripts failed to load:",
+              error
+            );
+          });
 
         // Load Font Awesome after a delay
         setTimeout(() => {
@@ -1072,7 +1090,6 @@
                                 <span class="highlight-label">website</span>
                               </div>
                             </div>
-                            
                           </div>
                           <div class="achievement-description">
                             <p>
@@ -1614,13 +1631,15 @@
                           >6.006/6.1210 - Introduction to Algorithms</span
                         >
                         <span class="course-tag"
-                          >6.031/6.1020 - Elements of Software Construction</span
+                          >6.031/6.1020 - Elements of Software
+                          Construction</span
                         >
                         <span class="course-tag"
                           >6.036/6.390 - Introduction to Machine Learning</span
                         >
                         <span class="course-tag"
-                          >6.046/6.1220 - Design and Analysis of Algorithms</span
+                          >6.046/6.1220 - Design and Analysis of
+                          Algorithms</span
                         >
                         <span class="course-tag">6.1040 - Software Design</span>
                         <span class="course-tag">18.06 - Linear Algebra</span>

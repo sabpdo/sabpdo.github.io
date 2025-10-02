@@ -1911,6 +1911,7 @@ class SpotifyMusicPlayer {
     this.clientId = "b3629d1eb6a34dbd91aed2ef24c497f1"; // Replace with your Spotify Client ID
     // Use the exact origin so it works on localhost and GitHub Pages
     // Make sure to whitelist this exact value (including trailing slash) in Spotify Dashboard
+    // Use specific redirect URI for GitHub Pages
     this.redirectUri = window.location.origin + "/";
     this.accessToken = null;
     this.currentTrack = null;
@@ -1925,6 +1926,18 @@ class SpotifyMusicPlayer {
     // Using Spotify's preview API - this should work for most tracks
     this.defaultAudioUrl =
       "https://p.scdn.co/mp3-preview/5VBjyOQzqlPNgdRPMM6prF?cid=b3629d1eb6a34dbd91aed2ef24c497f1";
+
+    // Email whitelist for search functionality
+    this.searchWhitelist = [
+      "sabpdo@mit.edu",
+      "norapan99@hotmail.com",
+      "sabpdo@icloud.com",
+      // Add more emails here as needed
+    ];
+    this.userEmail = null;
+    this.hasSearchAccess = false;
+    this.restrictedInterfaceShown = false;
+    this.embedHidingInterval = null;
 
     this.initializeElements();
     this.setupEventListeners();
@@ -1964,6 +1977,34 @@ class SpotifyMusicPlayer {
       e.stopPropagation();
       this.toggleExpanded();
     });
+
+    // Prevent scrolling within music modal
+    this.musicContent.addEventListener(
+      "wheel",
+      (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      },
+      { passive: false }
+    );
+
+    this.musicContent.addEventListener(
+      "touchmove",
+      (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      },
+      { passive: false }
+    );
+
+    this.musicContent.addEventListener(
+      "scroll",
+      (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      },
+      { passive: false }
+    );
 
     // Toggle music player when clicking "Now Playing" text
     this.musicTitle.addEventListener("click", (e) => {
@@ -2036,28 +2077,13 @@ class SpotifyMusicPlayer {
   }
 
   initializeDefaultMusic() {
-    // Check if device is mobile or has small width screen
-    const isMobile =
-      window.innerWidth <= 768 ||
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-        navigator.userAgent
-      );
+    // Always start with music player expanded to show login interface
+    this.isExpanded = true;
+    this.musicContent.classList.add("show");
+    this.musicToggle.innerHTML = '<i class="fas fa-chevron-up"></i>';
 
-    // Check if screen width is small (less than 1024px)
-    const isSmallWidth = window.innerWidth < 1024;
-
-    if (isMobile || isSmallWidth) {
-      // On mobile or small width screens, start with music player closed
-      this.isExpanded = false;
-      this.musicContent.classList.remove("show");
-      this.musicToggle.innerHTML = '<i class="fas fa-music"></i>';
-      // Don't show the embed by default on mobile or small screens
-    } else {
-      // On desktop with larger screens, set initial state as expanded since we want to show the embed
-      this.isExpanded = true;
-      // Show the default embed immediately when the page loads
-      this.showDefaultEmbed();
-    }
+    // Show the default embed immediately when the page loads
+    this.showDefaultEmbed();
   }
 
   playDefaultTrack() {
@@ -2071,6 +2097,12 @@ class SpotifyMusicPlayer {
   }
 
   showDefaultEmbed() {
+    // Don't show embed for restricted users
+    if (this.restrictedInterfaceShown) {
+      console.log("Skipping showDefaultEmbed for restricted user");
+      return;
+    }
+
     // Make sure music content is visible
     this.musicContent.classList.add("show");
 
@@ -2202,7 +2234,7 @@ class SpotifyMusicPlayer {
     if (code) {
       try {
         await this.exchangeCodeForToken(code);
-        this.showMusicPlayer();
+        // showMusicPlayer() is now called inside exchangeCodeForToken()
         // Clean URL
         window.history.replaceState(
           {},
@@ -2221,6 +2253,8 @@ class SpotifyMusicPlayer {
     const token = params.get("access_token");
     if (token) {
       this.accessToken = token;
+      // Get user email first, then show music player
+      await this.getUserEmail();
       this.showMusicPlayer();
       window.history.replaceState({}, document.title, window.location.pathname);
     } else {
@@ -2243,24 +2277,25 @@ class SpotifyMusicPlayer {
     this.spotifyLogin.style.border = "";
     this.spotifyLogin.style.boxShadow = "";
 
-    // Reset button styling
+    // Reset button styling to pink theme
     const loginBtn = this.spotifyLogin.querySelector("button");
     if (loginBtn) {
-      loginBtn.style.background = "";
-      loginBtn.style.color = "";
-      loginBtn.style.border = "";
-      loginBtn.style.borderRadius = "";
-      loginBtn.style.padding = "";
-      loginBtn.style.fontWeight = "";
-      loginBtn.style.fontSize = "";
-      loginBtn.style.cursor = "";
-      loginBtn.style.transition = "";
-      loginBtn.style.boxShadow = "";
-      loginBtn.style.transform = "";
+      loginBtn.style.background = "#ff69b4";
+      loginBtn.style.color = "white";
+      loginBtn.style.border = "none";
+      loginBtn.style.borderRadius = "25px";
+      loginBtn.style.padding = "12px 24px";
+      loginBtn.style.fontWeight = "600";
+      loginBtn.style.fontSize = "14px";
+      loginBtn.style.cursor = "pointer";
+      loginBtn.style.transition = "all 0.3s ease";
+      loginBtn.style.boxShadow = "0 2px 8px rgba(255, 105, 180, 0.3)";
+      loginBtn.style.margin = "10px auto";
+      loginBtn.style.display = "block";
     }
 
-    // Remove the default embed if it exists
-    this.removeDefaultEmbed();
+    // Show the default embed with the pink login button
+    this.showDefaultEmbed();
   }
 
   async exchangeCodeForToken(code) {
@@ -2288,6 +2323,62 @@ class SpotifyMusicPlayer {
     }
 
     this.accessToken = data.access_token;
+
+    // Get user's email to check whitelist
+    await this.getUserEmail();
+
+    // Now show the music player with proper access control
+    this.showMusicPlayer();
+  }
+
+  async getUserEmail() {
+    try {
+      console.log(
+        "Getting user email with token:",
+        this.accessToken ? "present" : "missing"
+      );
+      const response = await fetch("https://api.spotify.com/v1/me", {
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+        },
+      });
+
+      console.log("User email response status:", response.status);
+
+      if (response.ok) {
+        const userData = await response.json();
+        this.userEmail = userData.email;
+        this.hasSearchAccess = this.searchWhitelist.includes(this.userEmail);
+        console.log("User email:", this.userEmail);
+        console.log("Whitelist:", this.searchWhitelist);
+        console.log("Has search access:", this.hasSearchAccess);
+      } else if (response.status === 403) {
+        console.log(
+          "403 Forbidden - Email access not available, defaulting to restricted access"
+        );
+        // 403 means we don't have permission to access email - default to restricted
+        this.userEmail = null;
+        this.hasSearchAccess = false;
+
+        // Force show restricted interface immediately
+        this.forceShowRestrictedInterface();
+      } else {
+        console.error("Failed to get user email, status:", response.status);
+        // For other errors, assume no access for security
+        this.userEmail = null;
+        this.hasSearchAccess = false;
+        console.log(
+          "Cannot verify user email - denying search access for security"
+        );
+      }
+    } catch (error) {
+      console.error("Error getting user email:", error);
+      this.userEmail = null;
+      this.hasSearchAccess = false;
+      console.log(
+        "Error fetching user email - denying search access for security"
+      );
+    }
   }
 
   generateCodeVerifier() {
@@ -2316,13 +2407,80 @@ class SpotifyMusicPlayer {
     this.spotifyLogin.style.display = "none";
     this.musicPlayerContent.style.display = "block";
 
-    // Remove the default embed when user logs in
-    this.removeDefaultEmbed();
+    // Apply search access control and show/hide appropriate UI
+    this.toggleSearchVisibility();
 
     this.updateHeaderNowPlaying();
-    // Auto-load a default song if none selected yet
-    if (!this.currentTrack && this.accessToken && this.defaultTrackId) {
+    // Auto-load a default song if none selected yet (only for whitelisted users)
+    if (
+      this.hasSearchAccess &&
+      !this.currentTrack &&
+      this.accessToken &&
+      this.defaultTrackId
+    ) {
       this.playTrack(this.defaultTrackId);
+    }
+  }
+
+  toggleSearchVisibility() {
+    console.log(
+      "toggleSearchVisibility called - hasSearchAccess:",
+      this.hasSearchAccess
+    );
+    console.log("User email:", this.userEmail);
+    console.log("Restricted interface shown:", this.restrictedInterfaceShown);
+
+    // If restricted interface was already shown due to 403 error, don't override it
+    if (this.restrictedInterfaceShown) {
+      console.log("Restricted interface already shown, skipping toggle");
+      return;
+    }
+
+    const searchContainer = document.querySelector(".search-container");
+    const searchResults = document.getElementById("search-results");
+
+    if (this.hasSearchAccess) {
+      console.log("Showing full access interface");
+      // Show search functionality and custom player
+      if (searchContainer) {
+        searchContainer.style.display = "flex";
+        searchContainer.style.visibility = "visible";
+      }
+      if (searchResults) searchResults.style.display = "none";
+
+      // Show custom player elements
+      this.toggleCustomPlayerVisibility(true);
+
+      // Remove any logout button if it exists
+      this.removeLogoutButton();
+
+      // Remove the default embed for whitelisted users
+      this.removeDefaultEmbed();
+    } else {
+      console.log("Showing restricted access interface");
+      // Hide search functionality and show restricted access interface
+      if (searchContainer) {
+        searchContainer.style.display = "none";
+      }
+      if (searchResults) {
+        searchResults.style.display = "block";
+        searchResults.innerHTML = `
+          <div class="whitelist-message">
+            <i class="fas fa-lock"></i>
+            <h4>Search Access Restricted</h4>
+            <p>Search functionality is currently limited to whitelisted users.</p>
+            <p>Contact <a href="mailto:sabpdo@mit.edu">sabpdo@mit.edu</a> for access.</p>
+            <button class="logout-btn" onclick="musicPlayer.logout()">
+              <i class="fas fa-sign-out-alt"></i>
+              Logout
+            </button>
+          </div>
+        `;
+      }
+
+      // Hide custom player elements and default embed for restricted users
+      this.toggleCustomPlayerVisibility(false);
+      this.hideDefaultEmbed();
     }
   }
 
@@ -2342,9 +2500,291 @@ class SpotifyMusicPlayer {
     this.toggleCustomPlayerVisibility(true);
   }
 
+  logout() {
+    // Clear access token and user data
+    this.accessToken = null;
+    this.userEmail = null;
+    this.hasSearchAccess = false;
+    this.isLoggedIn = false;
+    this.currentTrack = null;
+
+    // Reset restricted interface state
+    this.restrictedInterfaceShown = false;
+
+    // Stop any playing audio
+    if (this.audio) {
+      this.audio.pause();
+      this.audio = null;
+    }
+
+    // Clear the embed hiding interval
+    if (this.embedHidingInterval) {
+      clearInterval(this.embedHidingInterval);
+      this.embedHidingInterval = null;
+    }
+
+    // Clear any restricted message
+    const searchResults = document.getElementById("search-results");
+    if (searchResults) {
+      searchResults.style.display = "none";
+      searchResults.innerHTML = "";
+    }
+
+    // Restore page scrolling
+    document.body.style.overflow = "";
+    document.documentElement.style.overflow = "";
+    document.body.classList.remove("restricted-scroll-lock");
+    document.documentElement.classList.remove("restricted-scroll-lock");
+
+    // Reset UI to login state
+    this.showLoginInterface();
+
+    // Clear any stored tokens
+    sessionStorage.removeItem("spotify_code_verifier");
+
+    console.log("User logged out - elements restored for login");
+  }
+
+  removeLogoutButton() {
+    const logoutBtn = document.querySelector(".logout-btn");
+    if (logoutBtn && logoutBtn.parentNode) {
+      logoutBtn.parentNode.removeChild(logoutBtn);
+    }
+  }
+
+  hideDefaultEmbed() {
+    // Hide the default Spotify embed (correct ID) with multiple methods
+    const defaultEmbed = document.getElementById("spotify-default-embed");
+    if (defaultEmbed) {
+      defaultEmbed.style.display = "none !important";
+      defaultEmbed.style.visibility = "hidden";
+      defaultEmbed.style.opacity = "0";
+      defaultEmbed.style.height = "0";
+      defaultEmbed.style.width = "0";
+      defaultEmbed.style.overflow = "hidden";
+      defaultEmbed.style.pointerEvents = "none";
+      defaultEmbed.setAttribute("hidden", "true");
+      console.log("Default embed hidden for unauthorized user");
+    }
+
+    // Also check for the old ID just in case
+    const oldDefaultEmbed = document.getElementById("default-embed");
+    if (oldDefaultEmbed) {
+      oldDefaultEmbed.style.display = "none !important";
+      oldDefaultEmbed.style.visibility = "hidden";
+      oldDefaultEmbed.style.opacity = "0";
+      oldDefaultEmbed.style.height = "0";
+      oldDefaultEmbed.style.width = "0";
+      oldDefaultEmbed.setAttribute("hidden", "true");
+      console.log("Old default embed hidden for unauthorized user");
+    }
+
+    // Hide any iframe elements that might be Spotify embeds
+    const iframes = document.querySelectorAll("iframe");
+    iframes.forEach((iframe) => {
+      if (iframe.src && iframe.src.includes("spotify")) {
+        iframe.style.display = "none !important";
+        iframe.style.visibility = "hidden";
+        iframe.style.opacity = "0";
+        iframe.style.height = "0";
+        iframe.style.width = "0";
+        iframe.style.overflow = "hidden";
+        iframe.style.pointerEvents = "none";
+        iframe.setAttribute("hidden", "true");
+        console.log("Spotify iframe hidden for unauthorized user");
+      }
+    });
+
+    // Hide any elements with spotify-related classes
+    const spotifyElements = document.querySelectorAll(
+      "[class*='spotify'], [id*='spotify']"
+    );
+    spotifyElements.forEach((element) => {
+      if (element.id !== "search-results") {
+        // Don't hide our restricted message
+        element.style.display = "none !important";
+        element.style.visibility = "hidden";
+        element.style.opacity = "0";
+        element.style.height = "0";
+        element.style.width = "0";
+        element.style.overflow = "hidden";
+        element.style.pointerEvents = "none";
+        element.setAttribute("hidden", "true");
+        console.log(
+          "Spotify element hidden for unauthorized user:",
+          element.id || element.className
+        );
+      }
+    });
+  }
+
+  hideLoginButton() {
+    // Hide the compact login button
+    const compactLoginBtn = document.getElementById("compact-login-btn");
+    if (compactLoginBtn) {
+      compactLoginBtn.style.display = "none";
+      console.log("Login button hidden for unauthorized user");
+    }
+
+    // Also hide the main login interface
+    if (this.spotifyLogin) {
+      this.spotifyLogin.style.display = "none";
+      console.log("Main login interface hidden for unauthorized user");
+    }
+  }
+
+  startEmbedHidingCheck() {
+    // Clear any existing interval
+    if (this.embedHidingInterval) {
+      clearInterval(this.embedHidingInterval);
+    }
+
+    // Check every 500ms to ensure embed stays hidden
+    this.embedHidingInterval = setInterval(() => {
+      if (this.restrictedInterfaceShown) {
+        this.hideDefaultEmbed();
+        this.aggressivelyRemoveSpotifyElements();
+      } else {
+        // Clear the interval if user is no longer restricted
+        clearInterval(this.embedHidingInterval);
+        this.embedHidingInterval = null;
+      }
+    }, 500);
+  }
+
+  aggressivelyRemoveSpotifyElements() {
+    // Actually remove Spotify elements from DOM for restricted users
+    const spotifyElements = document.querySelectorAll(
+      "[class*='spotify'], [id*='spotify'], iframe[src*='spotify']"
+    );
+    spotifyElements.forEach((element) => {
+      if (element.id !== "search-results") {
+        // Don't remove our restricted message
+        if (element.parentNode) {
+          element.parentNode.removeChild(element);
+          console.log(
+            "Spotify element removed from DOM:",
+            element.id || element.className
+          );
+        }
+      }
+    });
+  }
+
+  forceShowRestrictedInterface() {
+    console.log("Force showing restricted interface for 403 error");
+    this.restrictedInterfaceShown = true;
+
+    // Prevent page scrolling when restricted interface is shown
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    document.body.classList.add("restricted-scroll-lock");
+    document.documentElement.classList.add("restricted-scroll-lock");
+
+    // Hide search container
+    const searchContainer = document.querySelector(".search-container");
+    console.log("Search container found:", !!searchContainer);
+    if (searchContainer) {
+      searchContainer.style.display = "none";
+      console.log("Search container hidden");
+    }
+
+    // Show search results with restricted message
+    let searchResults = document.getElementById("search-results");
+    console.log("Search results element found:", !!searchResults);
+
+    // If search-results doesn't exist, create it
+    if (!searchResults) {
+      console.log("Creating search-results element");
+      const musicContent = document.getElementById("music-content");
+      if (musicContent) {
+        searchResults = document.createElement("div");
+        searchResults.id = "search-results";
+        searchResults.style.display = "block";
+        searchResults.style.visibility = "visible";
+        searchResults.style.position = "relative";
+        searchResults.style.zIndex = "1000";
+        musicContent.appendChild(searchResults);
+        console.log(
+          "Search results element created and added to music content"
+        );
+      }
+    }
+
+    if (searchResults) {
+      searchResults.style.display = "block";
+      searchResults.style.visibility = "visible";
+      searchResults.style.position = "relative";
+      searchResults.style.zIndex = "1000";
+      searchResults.style.overflow = "hidden";
+      searchResults.style.maxHeight = "100vh";
+      searchResults.style.padding = "20px";
+      searchResults.innerHTML = `
+        <div class="whitelist-message" style="
+          background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+          padding: 20px;
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+          border: 1px solid #e9ecef;
+          text-align: center;
+          max-width: 350px;
+          margin: 0 auto;
+          overflow: hidden;
+          position: relative;
+        ">
+          <div style="margin-bottom: 20px;">
+            <i class="fas fa-lock" style="font-size: 48px; color: #ff69b4; margin-bottom: 16px; display: block; opacity: 0.8;"></i>
+            <h4 style="color: #2d3748; font-size: 18px; margin-bottom: 12px; font-weight: 700; letter-spacing: -0.025em;">Search Access Restricted</h4>
+            <p style="color: #4a5568; margin: 8px 0; line-height: 1.6; font-size: 14px;">Search functionality is currently limited to whitelisted users.</p>
+            <p style="color: #4a5568; margin: 8px 0; line-height: 1.6; font-size: 14px;">Contact <a href="mailto:sabpdo@mit.edu" style="color: #ff69b4; text-decoration: none; font-weight: 600; border-bottom: 1px solid transparent; transition: all 0.2s ease;" onmouseover="this.style.borderBottomColor='#ff69b4'" onmouseout="this.style.borderBottomColor='transparent'">sabpdo@mit.edu</a> for access.</p>
+          </div>
+          <button class="logout-btn" onclick="musicPlayer.logout()" style="
+            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 8px rgba(255, 105, 180, 0.3);
+            letter-spacing: 0.025em;
+          " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(255, 105, 180, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(255, 105, 180, 0.3)'">
+            <i class="fas fa-sign-out-alt" style="font-size: 12px;"></i>
+            Logout
+          </button>
+        </div>
+      `;
+      console.log("Restricted message HTML set with inline styles");
+    } else {
+      console.error("Could not create or find search results element!");
+    }
+
+    // Hide custom player elements and default embed for unauthorized users
+    this.toggleCustomPlayerVisibility(false);
+    this.hideDefaultEmbed();
+
+    // Hide the login button for unauthorized users
+    this.hideLoginButton();
+
+    // Set up periodic check to ensure embed stays hidden
+    this.startEmbedHidingCheck();
+  }
+
   async searchTracks() {
     const query = this.searchInput.value.trim();
     if (!query || !this.isLoggedIn || !this.accessToken) return;
+
+    // Check if user has search access
+    if (!this.hasSearchAccess) {
+      console.log("Search access denied for user:", this.userEmail);
+      return;
+    }
 
     try {
       const response = await fetch(
@@ -2380,7 +2820,7 @@ class SpotifyMusicPlayer {
           <div class="result-title">${track.name}</div>
           <div class="result-artist">${track.artists[0].name}</div>
         </div>
-        <button class="play-preview" onclick="musicPlayer.playTrack('${
+        <button class="play-preview" onclick="musicPlayer.playTrackFromSearch('${
           track.id
         }')">
           <i class="fas fa-play"></i>
@@ -2423,6 +2863,39 @@ class SpotifyMusicPlayer {
     }
   }
 
+  async playTrackFromSearch(trackId) {
+    if (!this.isLoggedIn || !this.accessToken) {
+      console.log("User not logged in, cannot play track");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.spotify.com/v1/tracks/${trackId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+          },
+        }
+      );
+
+      const track = await response.json();
+      this.currentTrack = track;
+      this.updateTrackDisplay();
+
+      // Play preview if available - force autoplay for search results
+      if (track.preview_url) {
+        this.playPreviewFromSearch(track.preview_url);
+        this.removeEmbedIfAny();
+      } else {
+        // Fallback: show Spotify embed widget for full track
+        this.showEmbed(track.id);
+      }
+    } catch (error) {
+      console.error("Track fetch error:", error);
+    }
+  }
+
   playPreview(previewUrl) {
     if (this.audio) {
       this.audio.pause();
@@ -2445,15 +2918,78 @@ class SpotifyMusicPlayer {
     });
 
     // Autoplay the preview
-    this.audio.play().catch((error) => {
-      console.log("Autoplay prevented:", error);
-      // If autoplay fails, just update the UI to show it's ready to play
+    this.audio
+      .play()
+      .then(() => {
+        // Autoplay succeeded
+        this.isPlaying = true;
+        this.playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+      })
+      .catch((error) => {
+        console.log("Autoplay prevented:", error);
+        // If autoplay fails, just update the UI to show it's ready to play
+        this.isPlaying = false;
+        this.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+      });
+  }
+
+  playPreviewFromSearch(previewUrl) {
+    if (this.audio) {
+      this.audio.pause();
+    }
+
+    this.audio = new Audio(previewUrl);
+    this.audio.volume = this.volumeSlider.value / 100;
+
+    this.audio.addEventListener("loadedmetadata", () => {
+      this.durationSpan.textContent = this.formatTime(this.audio.duration);
+    });
+
+    this.audio.addEventListener("timeupdate", () => {
+      this.updateProgress();
+    });
+
+    this.audio.addEventListener("ended", () => {
       this.isPlaying = false;
       this.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
     });
 
-    this.isPlaying = true;
-    this.playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+    // More aggressive autoplay for search results
+    this.audio.load(); // Ensure audio is loaded
+
+    // Try multiple autoplay strategies
+    const tryPlay = () => {
+      this.audio
+        .play()
+        .then(() => {
+          console.log("Autoplay succeeded for search result");
+          this.isPlaying = true;
+          this.playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+        })
+        .catch((error) => {
+          console.log(
+            "Autoplay failed, trying user interaction approach:",
+            error
+          );
+          // If autoplay fails, show play button and wait for user click
+          this.isPlaying = false;
+          this.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+
+          // Add a one-time click listener to the play button
+          const playBtn = this.playPauseBtn;
+          const playOnce = () => {
+            this.audio.play().then(() => {
+              this.isPlaying = true;
+              this.playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            });
+            playBtn.removeEventListener("click", playOnce);
+          };
+          playBtn.addEventListener("click", playOnce);
+        });
+    };
+
+    // Try immediately
+    tryPlay();
   }
 
   updateTrackDisplay() {
