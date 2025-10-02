@@ -213,43 +213,42 @@ async function loadAssets() {
     { name: "cake", path: "asset_glb/strawberry_cake.glb", type: "gltf" },
     {
       name: "bunny",
-      path: "asset_glb/new_assets/bunny_plush_toy.glb",
+      path: "asset_glb/bunny_plush_toy.glb",
       type: "gltf",
     },
-    // new_assets additions
     {
       name: "newBed",
-      path: "asset_glb/new_assets/cute_stylized_bed_-_low_poly_-_game_ready.glb",
+      path: "asset_glb/cute_stylized_bed_-_low_poly_-_game_ready.glb",
       type: "gltf",
     },
     {
       name: "indoorPlantNew",
-      path: "asset_glb/new_assets/indoor_plant.glb",
+      path: "asset_glb/indoor_plant.glb",
       type: "gltf",
     },
     {
       name: "modernPainting",
-      path: "asset_glb/new_assets/modern_three_panel_painting.glb",
+      path: "asset_glb/modern_three_panel_painting.glb",
       type: "gltf",
     },
     {
       name: "owlVase",
-      path: "asset_glb/new_assets/owl_flowers_vase.glb",
+      path: "asset_glb/owl_flowers_vase.glb",
       type: "gltf",
     },
     {
       name: "stringLightsNew",
-      path: "asset_glb/new_assets/simple_string_lights.glb",
+      path: "asset_glb/simple_string_lights.glb",
       type: "gltf",
     },
     {
       name: "windowAsset",
-      path: "asset_glb/new_assets/window.glb",
+      path: "asset_glb/window.glb",
       type: "gltf",
     },
     {
       name: "camera",
-      path: "asset_glb/new_assets/zefir_camera_with_domiplan_lens.glb",
+      path: "asset_glb/zefir_camera_with_domiplan_lens.glb",
       type: "gltf",
     },
   ];
