@@ -6,7 +6,7 @@
   "scripts": {
     "start": "live-server --port=3000 --open=/",
     "dev": "live-server --port=3000 --open=/ --watch=.",
-    "build": "echo 'No build process needed for static site'",
+    "build": "terser script.js -o script.min.js -c -m",
     "deploy": "gh-pages -d ."
   },
   "keywords": [
@@ -20,6 +20,7 @@
   "license": "MIT",
   "devDependencies": {
     "gh-pages": "^4.0.0",
-    "live-server": "^1.2.2"
+    "live-server": "^1.2.2",
+    "terser": "^5.44.0"
   }
 }

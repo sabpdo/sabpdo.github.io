@@ -132,11 +132,6 @@ function init3D() {
   const ambientLight = new THREE.AmbientLight(0xffe8cc, 0.4);
   scene.add(ambientLight);
 
-  // // Soft skylight + ground bounce to better light PBR assets
-  // const hemiLight = new THREE.HemisphereLight(0xffead6, 0xb07c5e, 0.45);
-  // hemiLight.position.set(0, 5, 0);
-  // scene.add(hemiLight);
-
   const directionalLight = new THREE.DirectionalLight(0xffe6cc, 1.0);
   directionalLight.position.set(5, 5, 5);
   directionalLight.castShadow = true;
@@ -144,25 +139,25 @@ function init3D() {
   directionalLight.shadow.mapSize.height = 2048;
   scene.add(directionalLight);
 
-  // Initialize loaders
-  initLoaders();
+  // Create basic room structure first
+  createBasicRoom();
+  animate();
+  addMouseControls();
 
-  // Load assets first, then create room
-  loadAssets().then(() => {
-    createRoom();
-    animate();
-    addMouseControls();
+  // Wait for loaders to be available, then load assets
+  waitForLoadersAndLoadAssets();
 
-    // Hide loading screen when everything is ready
+  // Hide loading screen after critical assets are loaded
+  setTimeout(() => {
     hideLoadingScreen();
-  });
+  }, 1500);
 }
 
 // Hide loading screen when 3D scene is ready
 function hideLoadingScreen() {
   const loadingScreen = document.getElementById("loading-screen");
   if (loadingScreen) {
-    // Add a small delay to ensure smooth transition
+    // Hide loading screen much faster since we're loading progressively
     setTimeout(() => {
       loadingScreen.classList.add("hidden");
       // Remove from DOM after fade out
@@ -171,7 +166,7 @@ function hideLoadingScreen() {
           loadingScreen.parentNode.removeChild(loadingScreen);
         }
       }, 500);
-    }, 1000); // Show loading for at least 1 second
+    }, 2000); // Reduced from 5 seconds to 2 seconds
   }
 }
 
@@ -198,68 +193,418 @@ function initLoaders() {
   }
 }
 
-// Load all 3D assets
-async function loadAssets() {
-  console.log("Loading 3D assets...");
+// Wait for loaders to be available and then load assets
+function waitForLoadersAndLoadAssets() {
+  const checkLoaders = () => {
+    // Check if GLTFLoader is available (most important for our assets)
+    if (typeof THREE.GLTFLoader !== "undefined") {
+      console.log("GLTF Loader is now available, initializing loaders...");
+      initLoaders();
 
-  const assetsToLoad = [
-    { name: "bed", path: "asset_glb/bedDouble.glb", type: "gltf" },
-    { name: "table", path: "asset_glb/table.glb", type: "gltf" },
-    { name: "table2", path: "asset_glb/table.glb", type: "gltf" },
-    { name: "laptop", path: "asset_glb/laptop.glb", type: "gltf" },
-    { name: "chair", path: "asset_glb/chairDesk.glb", type: "gltf" },
-    { name: "lamp", path: "asset_glb/lampRoundTable.glb", type: "gltf" },
-    { name: "books", path: "asset_glb/books.glb", type: "gltf" },
-    { name: "cake", path: "asset_glb/strawberry_cake.glb", type: "gltf" },
+      // Load assets progressively and update room as they load
+      loadAssets().then(() => {
+        // Update room with newly loaded assets
+        updateRoomWithNewAssets();
+      });
+    } else {
+      console.log("Waiting for GLTF Loader to be available...");
+      setTimeout(checkLoaders, 100); // Check again in 100ms
+    }
+  };
+
+  checkLoaders();
+}
+
+// Progress tracking
+let totalAssets = 0;
+let loadedAssetsCount = 0;
+
+function updateProgress() {
+  const progressFill = document.getElementById("progress-fill");
+  const progressText = document.getElementById("progress-text");
+
+  if (progressFill && progressText) {
+    const percentage = Math.round((loadedAssetsCount / totalAssets) * 100);
+    progressFill.style.width = `${percentage}%`;
+    progressText.textContent = `${percentage}%`;
+  }
+}
+
+// Load critical 3D assets first, then load others progressively
+async function loadAssets() {
+  console.log("Loading 3D assets progressively...");
+
+  // Critical assets that are immediately visible
+  const criticalAssets = [
     {
-      name: "bunny",
-      path: "asset_glb/bunny_plush_toy.glb",
+      name: "table",
+      path: "asset_glb/table.glb",
       type: "gltf",
+      priority: "high",
+    },
+    {
+      name: "laptop",
+      path: "asset_glb/laptop.glb",
+      type: "gltf",
+      priority: "high",
+    },
+    {
+      name: "chair",
+      path: "asset_glb/chairDesk.glb",
+      type: "gltf",
+      priority: "high",
+    },
+  ];
+
+  // Secondary assets that can load after critical ones
+  const secondaryAssets = [
+    {
+      name: "table2",
+      path: "asset_glb/table.glb",
+      type: "gltf",
+      priority: "medium",
+    },
+    {
+      name: "lamp",
+      path: "asset_glb/lampRoundTable.glb",
+      type: "gltf",
+      priority: "medium",
+    },
+    {
+      name: "books",
+      path: "asset_glb/books.glb",
+      type: "gltf",
+      priority: "medium",
     },
     {
       name: "newBed",
       path: "asset_glb/cute_stylized_bed_-_low_poly_-_game_ready.glb",
       type: "gltf",
+      priority: "medium",
+    },
+  ];
+
+  // Decorative assets that can load last
+  const decorativeAssets = [
+    {
+      name: "cake",
+      path: "asset_glb/strawberry_cake.glb",
+      type: "gltf",
+      priority: "low",
+    },
+    {
+      name: "bunny",
+      path: "asset_glb/bunny_plush_toy.glb",
+      type: "gltf",
+      priority: "low",
     },
     {
       name: "indoorPlantNew",
       path: "asset_glb/indoor_plant.glb",
       type: "gltf",
-    },
-    {
-      name: "modernPainting",
-      path: "asset_glb/modern_three_panel_painting.glb",
-      type: "gltf",
-    },
-    {
-      name: "owlVase",
-      path: "asset_glb/owl_flowers_vase.glb",
-      type: "gltf",
+      priority: "low",
     },
     {
       name: "stringLightsNew",
       path: "asset_glb/simple_string_lights.glb",
       type: "gltf",
+      priority: "low",
     },
     {
       name: "windowAsset",
       path: "asset_glb/window.glb",
       type: "gltf",
-    },
-    {
-      name: "camera",
-      path: "asset_glb/zefir_camera_with_domiplan_lens.glb",
-      type: "gltf",
+      priority: "low",
     },
   ];
 
-  const loadPromises = assetsToLoad.map((asset) => loadAsset(asset));
+  // Calculate total assets for progress tracking
+  totalAssets =
+    criticalAssets.length + secondaryAssets.length + decorativeAssets.length;
+  loadedAssetsCount = 0;
 
+  // Load critical assets first
   try {
-    await Promise.all(loadPromises);
-    console.log("All assets loaded successfully!");
+    console.log("Loading critical assets...");
+    await Promise.all(
+      criticalAssets.map((asset) => loadAssetWithProgress(asset))
+    );
+    console.log("Critical assets loaded successfully!");
+
+    // Start loading secondary assets in background
+    setTimeout(() => {
+      console.log("Loading secondary assets...");
+      secondaryAssets.forEach((asset) => loadAssetWithProgress(asset));
+    }, 100);
+
+    // Start loading decorative assets after a delay
+    setTimeout(() => {
+      console.log("Loading decorative assets...");
+      decorativeAssets.forEach((asset) => loadAssetWithProgress(asset));
+    }, 500);
   } catch (error) {
-    console.warn("Some assets failed to load:", error);
+    console.warn("Some critical assets failed to load:", error);
+  }
+}
+
+// Load asset with progress tracking
+function loadAssetWithProgress(asset) {
+  return loadAsset(asset)
+    .then(() => {
+      loadedAssetsCount++;
+      updateProgress();
+      // Update room with the newly loaded asset
+      updateRoomWithNewAssets();
+    })
+    .catch(() => {
+      loadedAssetsCount++;
+      updateProgress();
+    });
+}
+
+// Update room with newly loaded assets
+function updateRoomWithNewAssets() {
+  console.log("Updating room with newly loaded assets...");
+
+  // Only add assets that aren't already in the room
+  addMissingAssetsToRoom();
+
+  // Update the mirror room to include new assets
+  updateMirrorRoom();
+}
+
+// Update mirror room with new assets
+function updateMirrorRoom() {
+  if (!window.mirroredRoom) {
+    console.warn("Mirrored room not found, recreating...");
+    createMirrorReflection();
+    return;
+  }
+
+  // Find all assets in the main room that don't exist in the mirror room
+  const mainRoomAssets = [];
+  room.traverse((child) => {
+    if (child.name && child.name !== "" && child !== room) {
+      mainRoomAssets.push(child);
+    }
+  });
+
+  // Add missing assets to mirror
+  mainRoomAssets.forEach((asset) => {
+    // Check if this asset already exists in the mirror room
+    const existingMirrorAsset = window.mirroredRoom.getObjectByName(asset.name);
+    if (!existingMirrorAsset) {
+      addAssetToMirror(asset);
+    }
+  });
+}
+
+// Add only missing assets to the room (optimized version)
+function addMissingAssetsToRoom() {
+  // Use the cute stylized bed if available, otherwise use regular bed
+  let bedToUse = null;
+  if (loadedAssets.newBed && !room.getObjectByName("bed")) {
+    bedToUse = prepareAsset(loadedAssets.newBed);
+    console.log("Using cute stylized bed");
+  } else if (loadedAssets.bed && !room.getObjectByName("bed")) {
+    bedToUse = prepareAsset(loadedAssets.bed);
+    console.log("Using regular bed");
+  }
+
+  if (bedToUse) {
+    bedToUse.name = "bed";
+    bedToUse.position.set(-1.95, -1.75, -4.5);
+    bedToUse.scale.set(3, 3, 3);
+    bedToUse.rotation.y = 4.75;
+    room.add(bedToUse);
+    increaseBrightnessOnGroup(bedToUse, 0.97);
+    console.log("Added bed to room");
+  }
+
+  // Desk against the back wall
+  const desk = prepareAsset(loadedAssets.table);
+  if (desk && !room.getObjectByName("desk")) {
+    desk.name = "desk";
+    desk.position.set(1.5, -2.2, -3.5);
+    desk.scale.set(3.0, 6.75, 3.0);
+    desk.rotation.y = 0;
+    room.add(desk);
+    console.log("Added desk to room");
+  }
+
+  // Laptop on desk
+  const laptop = prepareAsset(loadedAssets.laptop);
+  if (laptop && !room.getObjectByName("laptop")) {
+    laptop.name = "laptop";
+    laptop.position.set(2.0, 0.0, -3.8);
+    laptop.scale.set(4.0, 4.0, 4.0);
+    laptop.rotation.y = 0;
+
+    // Add glow effect to laptop
+    addGlowEffectToBooks(laptop);
+
+    room.add(laptop);
+    console.log("Added laptop to room");
+  }
+
+  // Chair in front of desk
+  const chair = prepareAsset(loadedAssets.chair);
+  if (chair && !room.getObjectByName("chair")) {
+    chair.name = "chair";
+    chair.position.set(3.5, -2.0, -3.5);
+    chair.scale.set(4.5, 4.5, 4.5);
+    chair.rotation.y = Math.PI;
+    boostSaturationOnGroup(chair, 1.05);
+    room.add(chair);
+    console.log("Added chair to room");
+  }
+
+  // Lamp for decoration
+  const lamp = prepareAsset(loadedAssets.lamp);
+  if (lamp && !room.getObjectByName("lamp")) {
+    lamp.name = "lamp";
+    lamp.position.set(3.2, 0.0, -4.0);
+    lamp.scale.set(3.75, 3.75, 3.75);
+    room.add(lamp);
+    console.log("Added lamp to room");
+  }
+
+  // Books for decoration on shelves
+  const books = prepareAsset(loadedAssets.books);
+  if (books && !room.getObjectByName("books")) {
+    books.name = "books";
+    books.position.set(2, 1.55, -4.0);
+    books.scale.set(10.0, 10.0, 10.0);
+    boostSaturationOnGroup(books, 1.45); // Add saturation to decorative books
+    addGlowEffectToBooks(books);
+    room.add(books);
+    console.log("Added books to room");
+  }
+
+  // Indoor plant GLB placed on the shelf
+  const shelfPlant = prepareAsset(loadedAssets.indoorPlantNew);
+  if (shelfPlant && !room.getObjectByName("shelfPlant")) {
+    shelfPlant.name = "shelfPlant";
+    shelfPlant.position.set(1.5, 1.55, -4.35);
+    shelfPlant.scale.set(1, 1, 1);
+    shelfPlant.rotation.y = -Math.PI / 12;
+    boostSaturationOnGroup(shelfPlant, 1.4); // Enhanced saturation for plant
+    room.add(shelfPlant);
+    console.log("Added shelf plant to room");
+  }
+
+  // Second table
+  const table2 = prepareAsset(loadedAssets.table2);
+  if (table2 && !room.getObjectByName("table2")) {
+    table2.name = "table2";
+    table2.position.set(-4.8, -2.2, 3.75);
+    table2.scale.set(1.75, 7, 3.5);
+    table2.rotation.y = 0;
+    room.add(table2);
+    console.log("Added second table to room");
+  }
+
+  // Create shelves above the desk
+  createShelves();
+
+  // Add decorative assets (cake, bunny, etc.)
+  addDecorativeAssets();
+}
+
+// Add decorative assets to the room
+function addDecorativeAssets() {
+  // Add cake on the second table
+  if (loadedAssets.cake && !room.getObjectByName("cake")) {
+    const cake = prepareAsset(loadedAssets.cake);
+    if (cake) {
+      cake.name = "cake";
+      cake.position.set(-3.9, 0, 3); // Position on the second table
+      cake.scale.set(0.5, 0.75, 0.5); // Make cake appropriately sized
+      cake.rotation.y = Math.PI / 4; // Rotate cake for better presentation
+
+      // Disable shadows for the cake
+      cake.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = false;
+          child.receiveShadow = false;
+        }
+      });
+
+      // Add subtle glowing effect to cake
+      addCakeGlowEffect(cake);
+
+      room.add(cake);
+      console.log("Added cake to room");
+    }
+  }
+
+  // Add bunny plush on the bed
+  if (loadedAssets.bunny && !room.getObjectByName("bunny")) {
+    const bunny = prepareAsset(loadedAssets.bunny);
+    if (bunny) {
+      bunny.name = "bunny";
+      // Position roughly on the top of the bed mattress
+      bunny.position.set(-2.15, 0.15, -1.5);
+      bunny.scale.set(2, 2, 2);
+      bunny.rotation.y = Math.PI / 6;
+      increaseBrightnessOnGroup(bunny, 7);
+
+      // Ensure plush has soft look: no shadows and softer material
+      if (bunny.traverse) {
+        bunny.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = false;
+            child.receiveShadow = false;
+            if (child.material) {
+              // Prefer keeping texture map while switching to Lambert for softer shading
+              const textureMap = Array.isArray(child.material)
+                ? child.material[0]?.map
+                : child.material.map;
+              const softMaterial = new THREE.MeshLambertMaterial({
+                color: 0xffffff,
+                map: textureMap || null,
+              });
+              child.material = softMaterial;
+            }
+          }
+        });
+      }
+
+      // Add glowing effect to bunny
+      addGlowEffectToBooks(bunny);
+
+      room.add(bunny);
+      console.log("Added bunny to room");
+    }
+  }
+
+  // Add string lights
+  if (loadedAssets.stringLightsNew && !room.getObjectByName("stringLights")) {
+    const strLights = prepareAsset(loadedAssets.stringLightsNew);
+    if (strLights) {
+      const s1 = strLights.clone();
+      s1.name = "stringLights";
+      increaseBrightnessOnGroup(s1, 10);
+      s1.position.set(-1.75, 3.45, -4.8);
+      s1.scale.set(0.5, 1, 2);
+      addGlowEffectToBooks(s1);
+      room.add(s1);
+      //addAssetToMirror(s1);
+      console.log("Added string lights to room");
+    }
+  }
+
+  // Add window asset
+  if (loadedAssets.windowAsset && !room.getObjectByName("windowAsset")) {
+    const windowAsset = prepareAsset(loadedAssets.windowAsset);
+    if (windowAsset) {
+      windowAsset.name = "windowAsset";
+      windowAsset.position.set(-7.71, -0.5, 1.5);
+      windowAsset.rotation.y = Math.PI;
+      windowAsset.scale.set(0.05, 0.05, 0.05);
+      room.add(windowAsset);
+      console.log("Added window asset to room");
+    }
   }
 }
 
@@ -408,27 +753,22 @@ function addMouseControls() {
 }
 
 // Create the 3D room
-function createRoom() {
-  console.log("Creating 3D room with assets...");
+function createBasicRoom() {
+  console.log("Creating basic 3D room structure...");
   room = new THREE.Group();
 
   // Room walls
   createWalls();
 
-  // Use loaded assets for furniture
-  createRoomWithAssets();
-
-  // Additional decorations
+  // Additional decorations (these don't require assets)
   createWindow();
-  createAdditionalWindows();
-  createLights();
   createSunlightBeams();
 
   // Create room reflection underneath the floor
   createMirrorReflection();
 
   scene.add(room);
-  console.log("3D room created successfully!");
+  console.log("Basic 3D room created successfully!");
 }
 
 // Clean up and prepare asset for use
@@ -459,197 +799,10 @@ function prepareAsset(asset) {
     });
   }
 
-  // Slightly increase saturation for a richer look
-  boostSaturationOnGroup(cloned);
+  // Don't apply saturation boost to all assets - let individual assets handle their own styling
+  // boostSaturationOnGroup(cloned, 1.2);
 
   return cloned;
-}
-
-// Create room using loaded assets
-function createRoomWithAssets() {
-  // Replace bed with new stylized bed asset if available
-  const newBed = prepareAsset(loadedAssets.newBed || loadedAssets.bed);
-  if (newBed) {
-    newBed.position.set(-1.95, -1.75, -4.5);
-    newBed.scale.set(3, 3, 3);
-    newBed.rotation.y = 4.75;
-    // Boost saturation and darken slightly
-    boostSaturationOnGroup(newBed, 100000000000);
-    increaseBrightnessOnGroup(newBed, 0.97);
-    room.add(newBed);
-  } else {
-    createFallbackBed();
-  }
-
-  // Desk against the back wall
-  const desk = prepareAsset(loadedAssets.table);
-  if (desk) {
-    desk.position.set(1.5, -2.2, -3.5); // Move desk slightly right
-    desk.scale.set(3.0, 6.75, 3.0); // Make desk 3/4 of current height
-    desk.rotation.y = 0; // Flip desk orientation
-    room.add(desk);
-  } else {
-    // Fallback desk
-    createFallbackDesk();
-  }
-
-  // Laptop on desk
-  const laptop = prepareAsset(loadedAssets.laptop);
-  if (laptop) {
-    laptop.position.set(2.0, 0.0, -3.8); // Move laptop slightly back more
-    laptop.scale.set(4.0, 4.0, 4.0); // Make laptop 10 times smaller
-    laptop.rotation.y = 0; // Flip laptop orientation
-
-    // Add glowing effect to laptop
-    addGlowEffectToBooks(laptop);
-
-    room.add(laptop);
-  } else {
-    // Fallback MacBook
-    createFallbackMacBook();
-  }
-
-  // Chair in front of desk
-  const chair = prepareAsset(loadedAssets.chair);
-  if (chair) {
-    chair.position.set(3.5, -2.0, -3.5); // Move chair back more
-    chair.scale.set(4.5, 4.5, 4.5); // Make chair 75% of current size
-    chair.rotation.y = Math.PI; // Flip chair orientation
-    room.add(chair);
-  } else {
-    // Fallback chair
-    createFallbackChair();
-  }
-
-  // Lamp for decoration
-  const lamp = prepareAsset(loadedAssets.lamp);
-  if (lamp) {
-    lamp.position.set(3.2, 0.0, -4.0); // Move lamp slightly right
-    lamp.scale.set(3.75, 3.75, 3.75); // Double the size
-    room.add(lamp);
-  }
-
-  // Create shelves above the desk
-  createShelves();
-
-  // Books for decoration on shelves - positioned on the right shelves
-  const books = prepareAsset(loadedAssets.books);
-  if (books) {
-    books.position.set(2, 1.55, -4.0); // Move books slightly up more
-    books.scale.set(10.0, 10.0, 10.0); // Make books 10x bigger
-
-    // Add glowing effect to books
-    addGlowEffectToBooks(books);
-
-    room.add(books);
-  }
-
-  // Indoor plant GLB placed on the shelf
-  const shelfPlant = prepareAsset(loadedAssets.indoorPlantNew);
-  if (shelfPlant) {
-    shelfPlant.position.set(1.5, 1.55, -4.35); // left side of shelf
-    shelfPlant.scale.set(1, 1, 1);
-    shelfPlant.rotation.y = -Math.PI / 12;
-    // keep colors rich but not too bright
-    boostSaturationOnGroup(shelfPlant, 1.2);
-    room.add(shelfPlant);
-  }
-
-  // // Owl flowers vase on the shelf next to books
-  // const owlVase = prepareAsset(loadedAssets.owlVase);
-  // if (owlVase) {
-  //   owlVase.position.set(1.4, 1.55, -4.6);
-  //   owlVase.scale.set(2.75, 2.75, 2.75);
-  //   boostSaturationOnGroup(owlVase, 50);
-  //   increaseBrightnessOnGroup(owlVase, 1.75);
-
-  //   room.add(owlVase);
-  // }
-
-  // // Modern three-panel painting on the back wall
-  // const painting = prepareAsset(loadedAssets.modernPainting);
-  // if (painting) {
-  //   painting.position.set(1.5, 1.6, -4.95);
-  //   painting.scale.set(2, 2, 2);
-  //   painting.rotation.y = 0;
-  //   room.add(painting);
-  // }
-
-  // // Replace procedural string lights with GLB if available
-  // const strLights = prepareAsset(loadedAssets.stringLightsNew);
-  // if (strLights) {
-  //   strLights.position.set(-2.2, 3.4, -4.8);
-  //   strLights.scale.set(0.6, 0.6, 0.6);
-  //   strLights.rotation.y = 0;
-  //   room.add(strLights);
-  // }
-
-  // Second table - positioned in a different area
-  const table2 = prepareAsset(loadedAssets.table2);
-  if (table2) {
-    table2.position.set(-4.8, -2.2, 3.75); // Position second table
-    table2.scale.set(1.75, 7, 3.5); // Make it more square (larger width and depth)
-    table2.rotation.y = 0; // Keep original orientation
-    room.add(table2);
-  }
-
-  // Cake on the second table
-  const cake = prepareAsset(loadedAssets.cake);
-  if (cake) {
-    cake.position.set(-3.9, 0, 3); // Position on the second table
-    cake.scale.set(0.5, 0.75, 0.5); // Make cake appropriately sized
-    cake.rotation.y = Math.PI / 4; // Rotate cake for better presentation
-    increaseBrightnessOnGroup(cake, 1.2);
-
-    // Disable shadows for the cake
-    cake.traverse((child) => {
-      if (child.isMesh) {
-        child.castShadow = false;
-        child.receiveShadow = false;
-      }
-    });
-
-    // Add subtle glowing effect to cake
-    addCakeGlowEffect(cake);
-
-    room.add(cake);
-  }
-
-  // Bunny plush on the bed
-  const bunny = prepareAsset(loadedAssets.bunny);
-  if (bunny) {
-    // Position roughly on the top of the bed mattress
-    // Bed center near (-5, -2, 1). Raise Y slightly above mattress.
-    bunny.position.set(-2.15, 0.15, -1.5);
-    bunny.scale.set(2, 2, 2);
-    bunny.rotation.y = Math.PI / 6;
-    increaseBrightnessOnGroup(bunny, 7);
-    // Ensure plush has soft look: no shadows and softer material
-    if (bunny.traverse) {
-      bunny.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = false;
-          child.receiveShadow = false;
-          if (child.material) {
-            // Prefer keeping texture map while switching to Lambert for softer shading
-            const textureMap = Array.isArray(child.material)
-              ? child.material[0]?.map
-              : child.material.map;
-            const softMaterial = new THREE.MeshLambertMaterial({
-              color: 0xffffff,
-              map: textureMap || null,
-            });
-            child.material = softMaterial;
-          }
-        }
-      });
-    }
-
-    // Add glowing effect to bunny
-    addGlowEffectToBooks(bunny);
-
-    room.add(bunny);
-  }
 }
 
 // Create mirror reflection of the scene
@@ -657,9 +810,11 @@ function createMirrorReflection() {
   // Clone the entire room
   const mirroredRoom = room.clone();
 
-  // Flip the mirrored room vertically (90 degree axis to the floor)
+  // Flip the mirrored room vertically around the floor plane (y = -2.25)
   mirroredRoom.scale.y = -1;
-  mirroredRoom.position.y = -5.5; // Position further below to account for taller walls and prevent glitching
+  // Position the mirrored room so it reflects across the floor plane (y = -2.25)
+  // This was working correctly for manually created items
+  mirroredRoom.position.y = -5.5;
 
   // Make the mirrored room look like a water reflection
   // Exclude glow meshes from the reflection
@@ -716,22 +871,93 @@ function createMirrorReflection() {
   // Add the mirrored room to the scene
   scene.add(mirroredRoom);
 
+  // Store reference to mirrored room for adding new assets later
+  window.mirroredRoom = mirroredRoom;
+
   console.log("Room reflection created successfully (glow meshes excluded)!");
+}
+
+// Add new asset to mirror reflection
+function addAssetToMirror(asset) {
+  if (!window.mirroredRoom) {
+    console.warn("Mirrored room not found, cannot add asset to mirror");
+    return;
+  }
+
+  // Clone the asset for the mirror
+  const mirroredAsset = asset.clone();
+  mirroredAsset.scale.y = asset.scale.y; // Flip vertically
+  mirroredAsset.scale.x = asset.scale.x;
+  mirroredAsset.scale.z = asset.scale.z;
+
+  // Apply mirror transformation - flip vertically and position correctly
+  // Position the mirrored asset to create a proper reflection across the floor plane (y = -2.25)
+  // Since the mirrored room is positioned at y = -4.5, we need to position assets relative to that
+  // For proper mirror reflection: mirroredY = -4.5 - assetY (relative to mirrored room position)
+  mirroredAsset.position.y = -1 + asset.position.y;
+
+  // Apply reflection material to the mirrored asset
+  mirroredAsset.traverse((child) => {
+    // Skip glow meshes - they shouldn't appear in the reflection
+    if (child.userData && child.userData.isGlowMesh) {
+      child.visible = false;
+      return;
+    }
+
+    if (child.isMesh && child.material) {
+      if (Array.isArray(child.material)) {
+        child.material.forEach((material) => {
+          const reflectionMaterial = material.clone();
+          reflectionMaterial.transparent = true;
+          reflectionMaterial.opacity = 0.25;
+          reflectionMaterial.depthWrite = false;
+
+          if (reflectionMaterial.color) {
+            reflectionMaterial.color.multiplyScalar(0.4);
+            reflectionMaterial.color.r *= 0.8;
+            reflectionMaterial.color.g *= 0.9;
+            reflectionMaterial.color.b *= 1.1;
+          }
+
+          child.material = reflectionMaterial;
+        });
+      } else {
+        const reflectionMaterial = child.material.clone();
+        reflectionMaterial.transparent = true;
+        reflectionMaterial.opacity = 0.25;
+        reflectionMaterial.depthWrite = false;
+
+        if (reflectionMaterial.color) {
+          reflectionMaterial.color.multiplyScalar(0.4);
+          reflectionMaterial.color.r *= 0.8;
+          reflectionMaterial.color.g *= 0.9;
+          reflectionMaterial.color.b *= 1.1;
+        }
+
+        child.material = reflectionMaterial;
+      }
+    }
+  });
+
+  // Add to mirrored room
+  window.mirroredRoom.add(mirroredAsset);
+  console.log(
+    `Added ${asset.name} to mirror at position (${mirroredAsset.position.x}, ${mirroredAsset.position.y}, ${mirroredAsset.position.z})`
+  );
 }
 
 // Create shelves above the desk
 function createShelves() {
   const shelfMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff }); // White color
 
-  // Shelf brackets - made bigger and adjusted for longer shelves
-  for (let i = 0; i < 4; i++) {
-    const bracketGeometry = new THREE.BoxGeometry(0.2, 1.2, 0.2);
-    const bracket = new THREE.Mesh(bracketGeometry, shelfMaterial);
-    bracket.position.set(-1.0 + i * 3.3, 2.3, -4.2); // Support brackets for longer shelves
-    room.add(bracket);
-  }
+  // Top shelf
+  const shelfGeometry = new THREE.BoxGeometry(3, 0.1, 1);
+  const topShelf = new THREE.Mesh(shelfGeometry, shelfMaterial);
+  topShelf.position.set(2.5, 1.5, -4.5);
+  topShelf.castShadow = true;
+  room.add(topShelf);
 
-  // add plant on the shelf
+  // Add plant on the shelf
   createPlant(1.5, 1.6, -4.5); // Light green
 }
 
@@ -925,16 +1151,6 @@ function createWalls() {
   room.add(leftWallTrim);
 }
 
-function createShelves() {
-  // Top shelf - cute pastel blue
-  const shelfGeometry = new THREE.BoxGeometry(3, 0.1, 1);
-  const shelfMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff }); // Light blue
-  const topShelf = new THREE.Mesh(shelfGeometry, shelfMaterial);
-  topShelf.position.set(2.5, 1.5, -4.5);
-  topShelf.castShadow = true;
-  room.add(topShelf);
-}
-
 function createPlant(x, y, z, plantColor = 0x2e7d32) {
   const plantGroup = new THREE.Group();
 
@@ -975,17 +1191,8 @@ function createPlant(x, y, z, plantColor = 0x2e7d32) {
 
 // Setup bloom postprocessing effect
 function setupBloomEffect() {
-  // Disable bloom for now - using simpler glow method
-  // composer = new THREE.EffectComposer(renderer);
-  // const renderPass = new THREE.RenderPass(scene, camera);
-  // composer.addPass(renderPass);
-  // bloomPass = new THREE.UnrealBloomPass(
-  //   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  //   1.2, // strength
-  //   0.4, // radius
-  //   0.9 // threshold
-  // );
-  // composer.addPass(bloomPass);
+  // Currently using simpler glow method instead of bloom postprocessing
+  // This function is kept for future bloom implementation if needed
 }
 
 // Add glowing effect to books using controlled glow meshes
@@ -1239,14 +1446,8 @@ function animateSunlightBeams() {
 }
 
 function createWindow() {
-  // Replace created window with GLB window asset if available
-  const win = prepareAsset(loadedAssets.windowAsset);
-  if (win) {
-    win.position.set(-7.71, -0.5, 1.5);
-    win.rotation.y = Math.PI;
-    win.scale.set(0.05, 0.05, 0.05);
-    room.add(win);
-  }
+  // Window asset is now added in addDecorativeAssets() when assets load
+  // This function creates the basic window structure and sky pane
 
   // Optional sky-blue pane behind the window opening for a pleasant view
   const skyPaneGeometry = new THREE.PlaneGeometry(1.2, 3);
@@ -1261,34 +1462,6 @@ function createWindow() {
   skyPane.position.set(-5.15, 2, -1.5);
   skyPane.rotation.y = Math.PI / 2;
   room.add(skyPane);
-}
-
-function createAdditionalWindows() {
-  // All additional windows removed since we only have two walls now
-  // The main window on the left wall is still there from createWindow()
-  // Additional windows removed for two-wall corner design
-}
-
-function createLights() {
-  // Use GLB string lights if available
-  const strLights = prepareAsset(loadedAssets.stringLightsNew);
-  if (strLights) {
-    const s1 = strLights.clone();
-    increaseBrightnessOnGroup(s1, 10);
-    s1.position.set(-1.75, 3.45, -4.8);
-    s1.scale.set(0.5, 1, 2);
-
-    // Add glowing effect to string lights
-    addGlowEffectToBooks(s1);
-
-    room.add(s1);
-
-    // const s2 = strLights.clone();
-    // s2.position.set(-4.75, 3.45, -2.0);
-    // s2.rotation.y = Math.PI / 2;
-    // s2.scale.set(0.7, 0.7, 0.7);
-    // room.add(s2);
-  }
 }
 
 function createSunlightBeams() {
