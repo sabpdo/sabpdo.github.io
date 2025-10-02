@@ -1,6 +1,7 @@
 // Three.js 3D Room Setup
 let scene, camera, renderer, room;
 let animationId;
+let composer, bloomPass;
 let mouseX = 0,
   mouseY = 0;
 let isMouseDown = false;
@@ -124,6 +125,9 @@ function init3D() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+  // Setup bloom postprocessing for glow effects
+  setupBloomEffect();
+
   // Lighting
   const ambientLight = new THREE.AmbientLight(0xffe8cc, 0.4);
   scene.add(ambientLight);
@@ -148,7 +152,27 @@ function init3D() {
     createRoom();
     animate();
     addMouseControls();
+
+    // Hide loading screen when everything is ready
+    hideLoadingScreen();
   });
+}
+
+// Hide loading screen when 3D scene is ready
+function hideLoadingScreen() {
+  const loadingScreen = document.getElementById("loading-screen");
+  if (loadingScreen) {
+    // Add a small delay to ensure smooth transition
+    setTimeout(() => {
+      loadingScreen.classList.add("hidden");
+      // Remove from DOM after fade out
+      setTimeout(() => {
+        if (loadingScreen.parentNode) {
+          loadingScreen.parentNode.removeChild(loadingScreen);
+        }
+      }, 500);
+    }, 1000); // Show loading for at least 1 second
+  }
 }
 
 // Update camera position using spherical coordinates
@@ -328,9 +352,9 @@ function addMouseControls() {
       targetCameraAngleY += deltaX * 0.01;
       targetCameraAngleX += deltaY * 0.01;
 
-      // Limit vertical angle to prevent flipping
+      // Limit vertical angle to prevent going below 90 degrees with ground
       targetCameraAngleX = Math.max(
-        -Math.PI / 2 + 0.1,
+        0.1, // Minimum angle (slightly above 90 degrees)
         Math.min(Math.PI / 2 - 0.1, targetCameraAngleX)
       );
 
@@ -399,6 +423,9 @@ function createRoom() {
   createWindow();
   createAdditionalWindows();
   createLights();
+
+  // Create room reflection underneath the floor
+  createMirrorReflection();
 
   scene.add(room);
   console.log("3D room created successfully!");
@@ -472,6 +499,10 @@ function createRoomWithAssets() {
     laptop.position.set(2.0, 0.0, -3.8); // Move laptop slightly back more
     laptop.scale.set(4.0, 4.0, 4.0); // Make laptop 10 times smaller
     laptop.rotation.y = 0; // Flip laptop orientation
+
+    // Add glowing effect to laptop
+    addGlowEffectToBooks(laptop);
+
     room.add(laptop);
   } else {
     // Fallback MacBook
@@ -506,6 +537,10 @@ function createRoomWithAssets() {
   if (books) {
     books.position.set(2, 1.55, -4.0); // Move books slightly up more
     books.scale.set(10.0, 10.0, 10.0); // Make books 10x bigger
+
+    // Add glowing effect to books
+    addGlowEffectToBooks(books);
+
     room.add(books);
   }
 
@@ -574,6 +609,9 @@ function createRoomWithAssets() {
       }
     });
 
+    // Add subtle glowing effect to cake
+    addCakeGlowEffect(cake);
+
     room.add(cake);
   }
 
@@ -606,8 +644,79 @@ function createRoomWithAssets() {
         }
       });
     }
+
+    // Add glowing effect to bunny
+    addGlowEffectToBooks(bunny);
+
     room.add(bunny);
   }
+}
+
+// Create mirror reflection of the scene
+function createMirrorReflection() {
+  // Clone the entire room
+  const mirroredRoom = room.clone();
+
+  // Flip the mirrored room vertically (90 degree axis to the floor)
+  mirroredRoom.scale.y = -1;
+  mirroredRoom.position.y = -5.5; // Position further below to account for taller walls and prevent glitching
+
+  // Make the mirrored room look like a water reflection
+  // Exclude glow meshes from the reflection
+  mirroredRoom.traverse((child) => {
+    // Skip glow meshes - they shouldn't appear in the reflection
+    if (child.userData && child.userData.isGlowMesh) {
+      child.visible = false;
+      return;
+    }
+
+    if (child.isMesh && child.material) {
+      if (Array.isArray(child.material)) {
+        child.material.forEach((material) => {
+          // Create a new material to avoid affecting the original
+          const reflectionMaterial = material.clone();
+          reflectionMaterial.transparent = true;
+          reflectionMaterial.opacity = 0.25; // More subtle water-like reflection
+          reflectionMaterial.depthWrite = false; // Prevent z-fighting
+
+          // Add water-like blue tint and darken
+          if (reflectionMaterial.color) {
+            reflectionMaterial.color.multiplyScalar(0.4); // Darker
+            // Add subtle blue tint for water effect
+            reflectionMaterial.color.r *= 0.8;
+            reflectionMaterial.color.g *= 0.9;
+            reflectionMaterial.color.b *= 1.1;
+          }
+
+          // Apply the new material
+          child.material = reflectionMaterial;
+        });
+      } else {
+        // Create a new material to avoid affecting the original
+        const reflectionMaterial = child.material.clone();
+        reflectionMaterial.transparent = true;
+        reflectionMaterial.opacity = 0.25; // More subtle water-like reflection
+        reflectionMaterial.depthWrite = false; // Prevent z-fighting
+
+        // Add water-like blue tint and darken
+        if (reflectionMaterial.color) {
+          reflectionMaterial.color.multiplyScalar(0.4); // Darker
+          // Add subtle blue tint for water effect
+          reflectionMaterial.color.r *= 0.8;
+          reflectionMaterial.color.g *= 0.9;
+          reflectionMaterial.color.b *= 1.1;
+        }
+
+        // Apply the new material
+        child.material = reflectionMaterial;
+      }
+    }
+  });
+
+  // Add the mirrored room to the scene
+  scene.add(mirroredRoom);
+
+  console.log("Room reflection created successfully (glow meshes excluded)!");
 }
 
 // Create shelves above the desk
@@ -704,8 +813,8 @@ function createWalls() {
   const leftWallMaterial = new THREE.MeshLambertMaterial({ color: 0xa97f65 });
   const trimMaterial = new THREE.MeshLambertMaterial({ color: 0xff91a4 });
 
-  // Floor
-  const floorGeometry = new THREE.PlaneGeometry(10, 10);
+  // Floor - made thicker with box geometry
+  const floorGeometry = new THREE.BoxGeometry(10, 0.5, 10); // Added thickness of 0.5 units
   const woodTexture = createWoodPlanksTexture({
     planks: 8,
     baseColor: "#a46d49", // darker, warmer base
@@ -718,41 +827,102 @@ function createWalls() {
     color: 0x7a5136, // tint darker to counter overexposure
   });
   const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = -2;
+  // No rotation needed for box geometry - it's already oriented correctly
+  floor.position.y = -2.25; // Adjusted position to account for thickness
   floor.receiveShadow = true;
+  floor.castShadow = true; // Floor can now cast shadows too
   room.add(floor);
 
-  // Back wall
-  const backWallGeometry = new THREE.PlaneGeometry(10, 6);
+  // Darker base layer underneath the wooden floor
+  const floorBaseGeometry = new THREE.BoxGeometry(10.2, 0.3, 10.2); // Slightly larger and thinner
+  const floorBaseMaterial = new THREE.MeshLambertMaterial({
+    color: 0x2c1810, // Very dark brown/black base
+  });
+  const floorBase = new THREE.Mesh(floorBaseGeometry, floorBaseMaterial);
+  floorBase.position.y = -2.6; // Positioned below the wooden floor
+  floorBase.receiveShadow = true;
+  floorBase.castShadow = true;
+  room.add(floorBase);
+
+  // Back wall - made thicker and slightly taller
+  const backWallGeometry = new THREE.BoxGeometry(10, 8, 0.3); // Increased height to 7.5 units
   const backWall = new THREE.Mesh(backWallGeometry, backWallMaterial);
-  backWall.position.z = -5;
-  backWall.position.y = 1;
+  backWall.position.z = -5.15; // Adjusted position to account for thickness
+  backWall.position.y = 1.5; // Centered between floor bottom (-2.75) and new top (4.5): (-2.75 + 4.5) / 2 = 0.875
+  backWall.castShadow = true;
+  backWall.receiveShadow = true;
   room.add(backWall);
 
-  // Left wall with window cutout
-  const leftWallGeometry = new THREE.PlaneGeometry(10, 6);
-  const leftWall = new THREE.Mesh(leftWallGeometry, leftWallMaterial);
-  leftWall.rotation.y = Math.PI / 2;
-  leftWall.position.x = -5;
-  leftWall.position.y = 1;
-  room.add(leftWall);
+  // Create left wall with actual window opening
+  // Build the wall in sections to create a real opening
+  const leftWallTopGeometry = new THREE.BoxGeometry(0.3, 2.3, 10);
+  const leftWallTop = new THREE.Mesh(leftWallTopGeometry, leftWallMaterial);
+  leftWallTop.position.x = -5.15;
+  leftWallTop.position.y = 4.4; // Position above the window
+  leftWallTop.castShadow = true;
+  leftWallTop.receiveShadow = true;
+  room.add(leftWallTop);
 
-  // Create window opening in the wall by making a transparent area
-  const windowOpeningGeometry = new THREE.PlaneGeometry(2, 2);
-  const windowOpeningMaterial = new THREE.MeshLambertMaterial({
-    color: 0x000000,
-    transparent: true,
-    opacity: 0.0, // Completely transparent
-  });
-  const windowOpening = new THREE.Mesh(
-    windowOpeningGeometry,
-    windowOpeningMaterial
+  const leftWallBottomGeometry = new THREE.BoxGeometry(0.3, 3, 10);
+  const leftWallBottom = new THREE.Mesh(
+    leftWallBottomGeometry,
+    leftWallMaterial
   );
-  windowOpening.rotation.y = Math.PI / 2;
-  windowOpening.position.x = -4.9;
-  windowOpening.position.y = 1;
-  room.add(windowOpening);
+  leftWallBottom.position.x = -5.15;
+  leftWallBottom.position.y = -1; // Position below the window
+  leftWallBottom.castShadow = true;
+  leftWallBottom.receiveShadow = true;
+  room.add(leftWallBottom);
+
+  // Left section of wall (to the left of window) - shifted left
+  const leftWallLeftGeometry = new THREE.BoxGeometry(0.3, 5, 2.9); // Height of window, wider to left edge
+  const leftWallLeft = new THREE.Mesh(leftWallLeftGeometry, leftWallMaterial);
+  leftWallLeft.position.x = -5.15;
+  leftWallLeft.position.y = 1.5;
+  leftWallLeft.position.z = -3.55; // Position further left
+  leftWallLeft.castShadow = true;
+  leftWallLeft.receiveShadow = true;
+  room.add(leftWallLeft);
+
+  // Right section of wall (to the right of window) - smaller since window is shifted left
+  const leftWallRightGeometry = new THREE.BoxGeometry(0.3, 5, 6); // Height of window, narrower to right edge
+  const leftWallRight = new THREE.Mesh(leftWallRightGeometry, leftWallMaterial);
+  leftWallRight.position.x = -5.15;
+  leftWallRight.position.y = 1.5;
+  leftWallRight.position.z = 2.; // Position closer to center
+  leftWallRight.castShadow = true;
+  leftWallRight.receiveShadow = true;
+  room.add(leftWallRight);
+
+  // Top border/trim for back wall
+  const backWallTrimGeometry = new THREE.BoxGeometry(10, 0.3, 0.6); // Dark brown trim
+  const backWallTrimMaterial = new THREE.MeshLambertMaterial({
+    color: 0x654321,
+  }); // Rich dark brown color
+  const backWallTrim = new THREE.Mesh(
+    backWallTrimGeometry,
+    backWallTrimMaterial
+  );
+  backWallTrim.position.z = -5.1; // Positioned at the front edge of the wall
+  backWallTrim.position.y = 5.65; // Positioned at the top of the wall
+  backWallTrim.castShadow = true;
+  backWallTrim.receiveShadow = true;
+  room.add(backWallTrim);
+
+  // Top border/trim for left wall
+  const leftWallTrimGeometry = new THREE.BoxGeometry(0.6, 0.3, 10); // Dark brown trim
+  const leftWallTrimMaterial = new THREE.MeshLambertMaterial({
+    color: 0x654321,
+  }); // Rich dark brown color
+  const leftWallTrim = new THREE.Mesh(
+    leftWallTrimGeometry,
+    leftWallTrimMaterial
+  );
+  leftWallTrim.position.x = -5.1; // Positioned at the front edge of the wall
+  leftWallTrim.position.y = 5.65; // Positioned at the top of the wall
+  leftWallTrim.castShadow = true;
+  leftWallTrim.receiveShadow = true;
+  room.add(leftWallTrim);
 }
 
 function createShelves() {
@@ -803,30 +973,206 @@ function createPlant(x, y, z, plantColor = 0x2e7d32) {
   room.add(plantGroup);
 }
 
+// Setup bloom postprocessing effect
+function setupBloomEffect() {
+  // Disable bloom for now - using simpler glow method
+  // composer = new THREE.EffectComposer(renderer);
+  // const renderPass = new THREE.RenderPass(scene, camera);
+  // composer.addPass(renderPass);
+  // bloomPass = new THREE.UnrealBloomPass(
+  //   new THREE.Vector2(window.innerWidth, window.innerHeight),
+  //   1.2, // strength
+  //   0.4, // radius
+  //   0.9 // threshold
+  // );
+  // composer.addPass(bloomPass);
+}
+
+// Add glowing effect to books using controlled glow meshes
+function addGlowEffectToBooks(books) {
+  // Mark this object as processed to prevent infinite loops
+  books.userData = {
+    glowProcessed: true,
+    glowMeshes: [],
+  };
+
+  books.traverse((child) => {
+    if (
+      child.isMesh &&
+      child.material &&
+      !child.userData.glowProcessed &&
+      !child.userData.isGlowMesh
+    ) {
+      // Mark this child as processed
+      child.userData = { glowProcessed: true };
+
+      // Create very subtle, natural glow
+      const glowLayers = [
+        {
+          scale: 1.01,
+          opacity: 0.04,
+          color: 0xf8bbd9,
+          blending: THREE.AdditiveBlending,
+        },
+        {
+          scale: 1.03,
+          opacity: 0.025,
+          color: 0xf0a8c8,
+          blending: THREE.AdditiveBlending,
+        },
+        {
+          scale: 1.05,
+          opacity: 0.015,
+          color: 0xe898b8,
+          blending: THREE.AdditiveBlending,
+        },
+      ];
+
+      glowLayers.forEach((layer, index) => {
+        const glowMaterial = new THREE.MeshBasicMaterial({
+          color: layer.color,
+          transparent: true,
+          opacity: layer.opacity,
+          side: THREE.BackSide,
+          blending: layer.blending,
+          depthWrite: false, // Prevent z-fighting
+          depthTest: false, // Always render on top
+        });
+
+        const glowMesh = new THREE.Mesh(child.geometry, glowMaterial);
+        glowMesh.scale.set(layer.scale, layer.scale, layer.scale);
+
+        // Add subtle position variation for more natural look
+        const offset = (index + 1) * 0.001; // Very small offset
+        glowMesh.position.set(
+          child.position.x + (Math.random() - 0.5) * offset,
+          child.position.y + (Math.random() - 0.5) * offset,
+          child.position.z + (Math.random() - 0.5) * offset
+        );
+
+        glowMesh.rotation.copy(child.rotation);
+        glowMesh.userData = { isGlowMesh: true, layerIndex: index };
+
+        child.add(glowMesh);
+        books.userData.glowMeshes.push(glowMesh);
+      });
+    }
+  });
+
+  // Store reference for animation
+  if (!window.glowingBooks) {
+    window.glowingBooks = [];
+  }
+  window.glowingBooks.push(books);
+}
+
+// Add subtle glow effect specifically for cake
+function addCakeGlowEffect(cake) {
+  // Mark this object as processed to prevent infinite loops
+  cake.userData = {
+    glowProcessed: true,
+    glowMeshes: [],
+  };
+
+  cake.traverse((child) => {
+    if (
+      child.isMesh &&
+      child.material &&
+      !child.userData.glowProcessed &&
+      !child.userData.isGlowMesh
+    ) {
+      // Mark this child as processed
+      child.userData = { glowProcessed: true };
+
+      // Create very subtle, natural glow for cake
+      const glowLayers = [
+        {
+          scale: 1.01,
+          opacity: 0.02,
+          color: 0xf8bbd9,
+          blending: THREE.AdditiveBlending,
+        },
+        {
+          scale: 1.02,
+          opacity: 0.01,
+          color: 0xf0a8c8,
+          blending: THREE.AdditiveBlending,
+        },
+      ];
+
+      glowLayers.forEach((layer, index) => {
+        const glowMaterial = new THREE.MeshBasicMaterial({
+          color: layer.color,
+          transparent: true,
+          opacity: layer.opacity,
+          side: THREE.BackSide,
+          blending: layer.blending,
+          depthWrite: false,
+          depthTest: false,
+        });
+
+        const glowMesh = new THREE.Mesh(child.geometry, glowMaterial);
+        glowMesh.scale.set(layer.scale, layer.scale, layer.scale);
+
+        // Add subtle position variation for more natural look
+        const offset = (index + 1) * 0.0005; // Even smaller offset for cake
+        glowMesh.position.set(
+          child.position.x + (Math.random() - 0.5) * offset,
+          child.position.y + (Math.random() - 0.5) * offset,
+          child.position.z + (Math.random() - 0.5) * offset
+        );
+
+        glowMesh.rotation.copy(child.rotation);
+        glowMesh.userData = { isGlowMesh: true, layerIndex: index };
+
+        child.add(glowMesh);
+        cake.userData.glowMeshes.push(glowMesh);
+      });
+    }
+  });
+
+  // Store reference for animation
+  if (!window.glowingBooks) {
+    window.glowingBooks = [];
+  }
+  window.glowingBooks.push(cake);
+}
+
+// Control glow visibility
+function setGlowVisibility(visible) {
+  if (window.glowingBooks) {
+    window.glowingBooks.forEach((books) => {
+      if (books.userData && books.userData.glowMeshes) {
+        books.userData.glowMeshes.forEach((glowMesh) => {
+          glowMesh.visible = visible;
+        });
+      }
+    });
+  }
+}
+
+// Animate the glowing books effect
+function animateGlowingBooks() {
+  if (window.glowingBooks) {
+    window.glowingBooks.forEach((books) => {
+      // The emissive glow effect is now handled by the material itself
+      // No additional animation needed for constant glow
+    });
+  }
+}
+
 function createWindow() {
   // Replace created window with GLB window asset if available
   const win = prepareAsset(loadedAssets.windowAsset);
   if (win) {
-    win.position.set(-7.5, -0.5, 1.5);
+    win.position.set(-7.71, -0.5, 1.5);
     win.rotation.y = Math.PI;
     win.scale.set(0.05, 0.05, 0.05);
     room.add(win);
-  } else {
-    // Fallback simple window plane
-    const windowGeometry = new THREE.PlaneGeometry(2, 2);
-    const windowMaterial = new THREE.MeshLambertMaterial({
-      color: 0x87ceeb,
-      transparent: true,
-      opacity: 0.7,
-    });
-    const window = new THREE.Mesh(windowGeometry, windowMaterial);
-    window.position.set(-4.8, 1.4, 0.1);
-    window.rotation.y = Math.PI / 2;
-    room.add(window);
-  }
+  } 
 
   // Optional sky-blue pane behind the window opening for a pleasant view
-  const skyPaneGeometry = new THREE.PlaneGeometry(1.5, 3);
+  const skyPaneGeometry = new THREE.PlaneGeometry(1.2, 3);
   const skyPaneMaterial = new THREE.MeshLambertMaterial({
     color: 0x87ceeb,
     transparent: true,
@@ -835,7 +1181,7 @@ function createWindow() {
   });
   const skyPane = new THREE.Mesh(skyPaneGeometry, skyPaneMaterial);
   // Place slightly behind the left wall so it's visible through the opening
-  skyPane.position.set(-4.8, 2, -1.5);
+  skyPane.position.set(-5.15, 2, -1.5);
   skyPane.rotation.y = Math.PI / 2;
   room.add(skyPane);
 }
@@ -854,6 +1200,10 @@ function createLights() {
     increaseBrightnessOnGroup(s1, 10);
     s1.position.set(-1.75, 3.45, -4.8);
     s1.scale.set(0.5, 1, 2);
+
+    // Add glowing effect to string lights
+    addGlowEffectToBooks(s1);
+
     room.add(s1);
 
     // const s2 = strLights.clone();
@@ -878,6 +1228,9 @@ function animate() {
   // Update camera position
   updateCameraPosition();
 
+  // Animate glowing books
+  animateGlowingBooks();
+
   if (renderer && scene && camera) {
     renderer.render(scene, camera);
   } else {
@@ -890,6 +1243,11 @@ function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+
+  // Update composer size if it exists
+  if (composer) {
+    composer.setSize(window.innerWidth, window.innerHeight);
+  }
 }
 
 // Modal functionality
@@ -898,6 +1256,28 @@ function initModal() {
   const navLinks = document.querySelectorAll(".nav-link");
   const contentSections = document.querySelectorAll(".content-section");
   const closeBtn = document.getElementById("close-modal");
+
+  // Add hover functionality to hide/show glow
+  if (modal) {
+    modal.addEventListener("mouseenter", () => {
+      setGlowVisibility(false); // Hide glow when hovering over menu
+    });
+
+    modal.addEventListener("mouseleave", () => {
+      setGlowVisibility(true); // Show glow when not hovering over menu
+    });
+  }
+
+  // Also add hover to individual nav links
+  navLinks.forEach((link) => {
+    link.addEventListener("mouseenter", () => {
+      setGlowVisibility(false);
+    });
+
+    link.addEventListener("mouseleave", () => {
+      setGlowVisibility(true);
+    });
+  });
 
   // Show modal on page load
   if (modal) {
