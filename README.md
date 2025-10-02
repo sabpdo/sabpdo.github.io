@@ -44,3 +44,10 @@ Opens at http://localhost:3000 with live reload
 - Firefox
 - Safari
 - Edge
+
+## Minimization
+
+To facilitate loading, I minimize the script size with 
+```
+cd /Users/sabrinado/sabpdo.github.io-1 && npx terser script.js -o script.min.js -c -m
+```

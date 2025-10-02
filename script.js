@@ -160,6 +160,9 @@ function hideLoadingScreen() {
     // Hide loading screen much faster since we're loading progressively
     setTimeout(() => {
       loadingScreen.classList.add("hidden");
+      // Remove loading class and re-enable scrolling when loading screen is hidden
+      document.body.classList.remove("loading");
+      enableBodyScroll();
       // Remove from DOM after fade out
       setTimeout(() => {
         if (loadingScreen.parentNode) {
@@ -1758,6 +1761,9 @@ function showContentSection(sectionId) {
   // Hide music player when modal opens
   hideMusicPlayer();
 
+  // Prevent scrolling when modal opens
+  preventBodyScroll();
+
   // Small delay to ensure smooth transition
   setTimeout(() => {
     // Show the selected section
@@ -1779,19 +1785,56 @@ function hideAllContentSections() {
   const contentSections = document.querySelectorAll(".content-section");
   contentSections.forEach((section) => {
     if (section.classList.contains("active")) {
-      // Add fade-out animation
-      section.style.animation =
-        "modalFadeOut 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+      // Add fade-out animation to the modal content first
+      const modalContent = section.querySelector(
+        ".scrapbook-content, .desktop-window, .briefcase-container, .education-content, .contact-content"
+      );
 
-      // Remove active class after animation completes
-      setTimeout(() => {
-        section.classList.remove("active");
-        section.style.animation = "";
-        // Show music player when modal closes
-        showMusicPlayer();
-      }, 300);
+      if (modalContent) {
+        modalContent.style.animation =
+          "modalFadeOut 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+      }
+
+      // Hide the backdrop immediately by removing active class and setting display
+      section.classList.remove("active");
+      section.style.display = "none";
+
+      // Clear animation after it completes
+      if (modalContent) {
+        setTimeout(() => {
+          modalContent.style.animation = "";
+          section.style.display = ""; // Reset display property
+        }, 300);
+      } else {
+        section.style.display = ""; // Reset display property immediately if no modal content
+      }
+
+      // Show music player when modal closes
+      showMusicPlayer();
+
+      // Re-enable scrolling when modal closes
+      enableBodyScroll();
     }
   });
+}
+
+// Prevent scrolling when modals are open
+function preventBodyScroll() {
+  document.body.style.overflow = "hidden";
+  document.body.style.position = "fixed";
+  document.body.style.width = "100%";
+  document.body.style.top = `-${window.scrollY}px`;
+}
+
+function enableBodyScroll() {
+  const scrollY = document.body.style.top;
+  document.body.style.overflow = "";
+  document.body.style.position = "";
+  document.body.style.width = "";
+  document.body.style.top = "";
+  if (scrollY) {
+    window.scrollTo(0, parseInt(scrollY || "0") * -1);
+  }
 }
 
 // Music player visibility functions
@@ -1845,6 +1888,10 @@ function waitForThreeJS() {
 // Initialize everything when page loads
 document.addEventListener("DOMContentLoaded", () => {
   console.log("DOM loaded, initializing...");
+
+  // Add loading class to body and prevent scrolling during loading
+  document.body.classList.add("loading");
+  preventBodyScroll();
 
   // Wait for Three.js to load
   waitForThreeJS();
@@ -2811,8 +2858,11 @@ function closeBriefcaseModal() {
   const experienceSection = document.getElementById("experience");
   if (experienceSection) {
     experienceSection.classList.remove("active");
+    experienceSection.style.display = "none";
     // Show music player when experience modal closes
     showMusicPlayer();
+    // Re-enable scrolling when modal closes
+    enableBodyScroll();
   }
 }
 
