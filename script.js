@@ -1051,7 +1051,11 @@ function addGlowEffectToBooks(books) {
         );
 
         glowMesh.rotation.copy(child.rotation);
-        glowMesh.userData = { isGlowMesh: true, layerIndex: index };
+        glowMesh.userData = {
+          isGlowMesh: true,
+          layerIndex: index,
+          originalOpacity: layer.opacity,
+        };
 
         child.add(glowMesh);
         books.userData.glowMeshes.push(glowMesh);
@@ -1123,7 +1127,11 @@ function addCakeGlowEffect(cake) {
         );
 
         glowMesh.rotation.copy(child.rotation);
-        glowMesh.userData = { isGlowMesh: true, layerIndex: index };
+        glowMesh.userData = {
+          isGlowMesh: true,
+          layerIndex: index,
+          originalOpacity: layer.opacity,
+        };
 
         child.add(glowMesh);
         cake.userData.glowMeshes.push(glowMesh);
@@ -1138,17 +1146,62 @@ function addCakeGlowEffect(cake) {
   window.glowingBooks.push(cake);
 }
 
-// Control glow visibility
+// Control glow visibility with smooth transitions
 function setGlowVisibility(visible) {
   if (window.glowingBooks) {
     window.glowingBooks.forEach((books) => {
       if (books.userData && books.userData.glowMeshes) {
         books.userData.glowMeshes.forEach((glowMesh) => {
-          glowMesh.visible = visible;
+          // Animate opacity instead of toggling visibility
+          const targetOpacity = visible ? glowMesh.userData.originalOpacity : 0;
+          animateGlowOpacity(glowMesh, targetOpacity);
         });
       }
     });
   }
+}
+
+// Animate glow opacity smoothly
+function animateGlowOpacity(glowMesh, targetOpacity, duration = 300) {
+  if (!glowMesh.material) return;
+
+  // Cancel any existing animation for this mesh
+  if (glowMesh.userData.animationId) {
+    cancelAnimationFrame(glowMesh.userData.animationId);
+  }
+
+  const startOpacity = glowMesh.material.opacity;
+  const startTime = Date.now();
+
+  function animate() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // Use easeInOutCubic for smooth transition
+    const easeProgress =
+      progress < 0.5
+        ? 4 * progress * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+    const currentOpacity =
+      startOpacity + (targetOpacity - startOpacity) * easeProgress;
+    glowMesh.material.opacity = currentOpacity;
+
+    // Make sure the mesh is visible during animation
+    glowMesh.visible = true;
+
+    if (progress < 1) {
+      glowMesh.userData.animationId = requestAnimationFrame(animate);
+    } else {
+      // Clear animation ID and hide mesh completely when opacity reaches 0
+      glowMesh.userData.animationId = null;
+      if (targetOpacity === 0) {
+        glowMesh.visible = false;
+      }
+    }
+  }
+
+  animate();
 }
 
 // Animate the glowing books effect
@@ -1615,12 +1668,18 @@ class SpotifyMusicPlayer {
     this.audio = null;
     this.isPlaying = false;
     this.isExpanded = false;
+    this.isLoggedIn = false;
     // Default track to auto-load after login
     // seasons — wave to earth (user-selected)
     this.defaultTrackId = "5VBjyOQzqlPNgdRPMM6prF";
+    // Default 30-second track for non-logged in users
+    // Using Spotify's preview API - this should work for most tracks
+    this.defaultAudioUrl =
+      "https://p.scdn.co/mp3-preview/5VBjyOQzqlPNgdRPMM6prF?cid=b3629d1eb6a34dbd91aed2ef24c497f1";
 
     this.initializeElements();
     this.setupEventListeners();
+    this.initializeDefaultMusic();
   }
 
   initializeElements() {
@@ -1655,6 +1714,17 @@ class SpotifyMusicPlayer {
       e.stopPropagation();
       this.toggleExpanded();
     });
+
+    // Toggle music player when clicking "Now Playing" text
+    this.musicTitle.addEventListener("click", (e) => {
+      console.log("Now Playing clicked!");
+      e.stopPropagation();
+      this.toggleExpanded();
+    });
+
+    // Make "Now Playing" text look clickable
+    this.musicTitle.style.cursor = "pointer";
+    this.musicTitle.style.userSelect = "none";
 
     // Spotify login
     this.spotifyLoginBtn.addEventListener("click", () => {
@@ -1715,6 +1785,108 @@ class SpotifyMusicPlayer {
     }
   }
 
+  initializeDefaultMusic() {
+    // Set initial state as expanded since we want to show the embed
+    this.isExpanded = true;
+    // Show the default embed immediately when the page loads
+    this.showDefaultEmbed();
+  }
+
+  playDefaultTrack() {
+    // Update track display for default track
+    this.trackTitle.textContent = "seasons";
+    this.trackArtist.textContent = "wave to earth";
+    this.updateHeaderNowPlaying("seasons");
+
+    // Show Spotify embed for the 30-second preview
+    this.showDefaultEmbed();
+  }
+
+  showDefaultEmbed() {
+    // Make sure music content is visible
+    this.musicContent.classList.add("show");
+
+    // Update toggle button to show expanded state
+    this.musicToggle.innerHTML = '<i class="fas fa-chevron-up"></i>';
+
+    // Create or update an iframe embed for the default track
+    let embed = document.getElementById("spotify-default-embed");
+    if (!embed) {
+      embed = document.createElement("iframe");
+      embed.id = "spotify-default-embed";
+      embed.setAttribute("data-testid", "embed-iframe");
+      embed.style.borderRadius = "12px";
+      embed.width = "100%";
+      embed.height = "152";
+      embed.frameBorder = "0";
+      embed.allowFullscreen = true;
+      embed.allow =
+        "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+      embed.loading = "lazy";
+      // Insert in the music content area
+      this.musicContent.appendChild(embed);
+    }
+    embed.src = `https://open.spotify.com/embed/track/${this.defaultTrackId}?utm_source=generator`;
+
+    // Hide the custom music player and original login section
+    this.musicPlayerContent.style.display = "none";
+    this.spotifyLogin.style.display = "none";
+
+    // Create a compact login button directly below the embed
+    this.createCompactLoginButton();
+  }
+
+  createCompactLoginButton() {
+    // Remove any existing compact login button
+    const existingBtn = document.getElementById("compact-login-btn");
+    if (existingBtn) {
+      existingBtn.remove();
+    }
+
+    // Create a new compact login button
+    const loginBtn = document.createElement("button");
+    loginBtn.id = "compact-login-btn";
+    loginBtn.innerHTML = '<i class="fab fa-spotify"></i> Login to Spotify';
+    loginBtn.style.background = "rgba(255, 255, 255, 0.9)";
+    loginBtn.style.color = "#ff69b4";
+    loginBtn.style.border = "none";
+    loginBtn.style.borderRadius = "20px";
+    loginBtn.style.padding = "8px 16px";
+    loginBtn.style.fontWeight = "600";
+    loginBtn.style.fontSize = "13px";
+    loginBtn.style.cursor = "pointer";
+    loginBtn.style.transition = "all 0.3s ease";
+    loginBtn.style.boxShadow = "0 2px 8px rgba(255, 105, 180, 0.2)";
+    loginBtn.style.margin = "10px auto";
+    loginBtn.style.display = "block";
+
+    // Add hover effects
+    loginBtn.addEventListener("mouseenter", () => {
+      loginBtn.style.background = "white";
+      loginBtn.style.color = "#ff1493";
+      loginBtn.style.transform = "translateY(-2px)";
+      loginBtn.style.boxShadow = "0 4px 12px rgba(255, 105, 180, 0.3)";
+    });
+
+    loginBtn.addEventListener("mouseleave", () => {
+      loginBtn.style.background = "rgba(255, 255, 255, 0.9)";
+      loginBtn.style.color = "#ff69b4";
+      loginBtn.style.transform = "translateY(0)";
+      loginBtn.style.boxShadow = "0 2px 8px rgba(255, 105, 180, 0.2)";
+    });
+
+    // Add click handler
+    loginBtn.addEventListener("click", () => {
+      this.loginToSpotify();
+    });
+
+    // Insert the button right after the embed
+    const embed = document.getElementById("spotify-default-embed");
+    if (embed && embed.parentNode) {
+      embed.parentNode.insertBefore(loginBtn, embed.nextSibling);
+    }
+  }
+
   async loginToSpotify() {
     const scopes =
       "user-read-private user-read-email user-top-read user-read-recently-played";
@@ -1764,7 +1936,44 @@ class SpotifyMusicPlayer {
       this.accessToken = token;
       this.showMusicPlayer();
       window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      // No access token found, show login interface
+      this.showLoginInterface();
     }
+  }
+
+  showLoginInterface() {
+    this.isLoggedIn = false;
+    this.spotifyLogin.style.display = "block";
+    this.musicPlayerContent.style.display = "none";
+
+    // Reset login styling to default
+    this.spotifyLogin.style.padding = "";
+    this.spotifyLogin.style.textAlign = "";
+    this.spotifyLogin.style.background = "";
+    this.spotifyLogin.style.borderRadius = "";
+    this.spotifyLogin.style.marginTop = "";
+    this.spotifyLogin.style.border = "";
+    this.spotifyLogin.style.boxShadow = "";
+
+    // Reset button styling
+    const loginBtn = this.spotifyLogin.querySelector("button");
+    if (loginBtn) {
+      loginBtn.style.background = "";
+      loginBtn.style.color = "";
+      loginBtn.style.border = "";
+      loginBtn.style.borderRadius = "";
+      loginBtn.style.padding = "";
+      loginBtn.style.fontWeight = "";
+      loginBtn.style.fontSize = "";
+      loginBtn.style.cursor = "";
+      loginBtn.style.transition = "";
+      loginBtn.style.boxShadow = "";
+      loginBtn.style.transform = "";
+    }
+
+    // Remove the default embed if it exists
+    this.removeDefaultEmbed();
   }
 
   async exchangeCodeForToken(code) {
@@ -1816,8 +2025,13 @@ class SpotifyMusicPlayer {
   }
 
   showMusicPlayer() {
+    this.isLoggedIn = true;
     this.spotifyLogin.style.display = "none";
     this.musicPlayerContent.style.display = "block";
+
+    // Remove the default embed when user logs in
+    this.removeDefaultEmbed();
+
     this.updateHeaderNowPlaying();
     // Auto-load a default song if none selected yet
     if (!this.currentTrack && this.accessToken && this.defaultTrackId) {
@@ -1825,9 +2039,25 @@ class SpotifyMusicPlayer {
     }
   }
 
+  removeDefaultEmbed() {
+    const embed = document.getElementById("spotify-default-embed");
+    if (embed && embed.parentNode) {
+      embed.parentNode.removeChild(embed);
+    }
+
+    // Remove the compact login button
+    const compactBtn = document.getElementById("compact-login-btn");
+    if (compactBtn && compactBtn.parentNode) {
+      compactBtn.parentNode.removeChild(compactBtn);
+    }
+
+    // Show custom UI again when embed is removed
+    this.toggleCustomPlayerVisibility(true);
+  }
+
   async searchTracks() {
     const query = this.searchInput.value.trim();
-    if (!query || !this.accessToken) return;
+    if (!query || !this.isLoggedIn || !this.accessToken) return;
 
     try {
       const response = await fetch(
@@ -1874,6 +2104,11 @@ class SpotifyMusicPlayer {
   }
 
   async playTrack(trackId) {
+    if (!this.isLoggedIn || !this.accessToken) {
+      console.log("User not logged in, cannot play track");
+      return;
+    }
+
     try {
       const response = await fetch(
         `https://api.spotify.com/v1/tracks/${trackId}`,
