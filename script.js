@@ -1063,7 +1063,7 @@ function createWalls() {
   room.add(floor);
 
   // Darker base layer underneath the wooden floor
-  const floorBaseGeometry = new THREE.BoxGeometry(10.2, 0.3, 10.2); // Slightly larger and thinner
+  const floorBaseGeometry = new THREE.BoxGeometry(10.5, 0.3, 10.2); // Slightly larger and thinner
   const floorBaseMaterial = new THREE.MeshLambertMaterial({
     color: 0x2c1810, // Very dark brown/black base
   });
@@ -1074,9 +1074,10 @@ function createWalls() {
   room.add(floorBase);
 
   // Back wall - made thicker and slightly taller
-  const backWallGeometry = new THREE.BoxGeometry(10, 8, 0.3); // Increased height to 7.5 units
+  const backWallGeometry = new THREE.BoxGeometry(10.5, 8.4, 0.3); // Increased height to 7.5 units
   const backWall = new THREE.Mesh(backWallGeometry, backWallMaterial);
   backWall.position.z = -5.15; // Adjusted position to account for thickness
+  backWall.position.x = -0.10; // Adjusted position to account for thickness
   backWall.position.y = 1.5; // Centered between floor bottom (-2.75) and new top (4.5): (-2.75 + 4.5) / 2 = 0.875
   backWall.castShadow = true;
   backWall.receiveShadow = true;
@@ -1084,7 +1085,7 @@ function createWalls() {
 
   // Create left wall with actual window opening
   // Build the wall in sections to create a real opening
-  const leftWallTopGeometry = new THREE.BoxGeometry(0.3, 2.3, 10);
+  const leftWallTopGeometry = new THREE.BoxGeometry(0.3, 2.2, 10);
   const leftWallTop = new THREE.Mesh(leftWallTopGeometry, leftWallMaterial);
   leftWallTop.position.x = -5.15;
   leftWallTop.position.y = 4.4; // Position above the window
@@ -1092,7 +1093,7 @@ function createWalls() {
   leftWallTop.receiveShadow = true;
   room.add(leftWallTop);
 
-  const leftWallBottomGeometry = new THREE.BoxGeometry(0.3, 3, 10);
+  const leftWallBottomGeometry = new THREE.BoxGeometry(0.3, 3.5, 10);
   const leftWallBottom = new THREE.Mesh(
     leftWallBottomGeometry,
     leftWallMaterial
@@ -1104,27 +1105,27 @@ function createWalls() {
   room.add(leftWallBottom);
 
   // Left section of wall (to the left of window) - shifted left
-  const leftWallLeftGeometry = new THREE.BoxGeometry(0.3, 5, 2.9); // Height of window, wider to left edge
+  const leftWallLeftGeometry = new THREE.BoxGeometry(0.3, 3, 2.9); // Height of window, wider to left edge
   const leftWallLeft = new THREE.Mesh(leftWallLeftGeometry, leftWallMaterial);
   leftWallLeft.position.x = -5.15;
-  leftWallLeft.position.y = 1.5;
+  leftWallLeft.position.y = 2;
   leftWallLeft.position.z = -3.55; // Position further left
   leftWallLeft.castShadow = true;
   leftWallLeft.receiveShadow = true;
   room.add(leftWallLeft);
 
   // Right section of wall (to the right of window) - smaller since window is shifted left
-  const leftWallRightGeometry = new THREE.BoxGeometry(0.3, 5, 6); // Height of window, narrower to right edge
+  const leftWallRightGeometry = new THREE.BoxGeometry(0.3, 3, 6); // Height of window, narrower to right edge
   const leftWallRight = new THREE.Mesh(leftWallRightGeometry, leftWallMaterial);
   leftWallRight.position.x = -5.15;
-  leftWallRight.position.y = 1.5;
+  leftWallRight.position.y = 2;
   leftWallRight.position.z = 2; // Position closer to center
   leftWallRight.castShadow = true;
   leftWallRight.receiveShadow = true;
   room.add(leftWallRight);
 
   // Top border/trim for back wall
-  const backWallTrimGeometry = new THREE.BoxGeometry(10, 0.3, 0.6); // Dark brown trim
+  const backWallTrimGeometry = new THREE.BoxGeometry(10.6, 0.3, 0.6); // Dark brown trim
   const backWallTrimMaterial = new THREE.MeshLambertMaterial({
     color: 0x654321,
   }); // Rich dark brown color
@@ -1133,6 +1134,7 @@ function createWalls() {
     backWallTrimMaterial
   );
   backWallTrim.position.z = -5.1; // Positioned at the front edge of the wall
+  backWallTrim.position.x = -0.12; // Adjusted position to account for thickness
   backWallTrim.position.y = 5.65; // Positioned at the top of the wall
   backWallTrim.castShadow = true;
   backWallTrim.receiveShadow = true;
