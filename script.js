@@ -695,9 +695,9 @@ function addMouseControls() {
       const deltaX = event.clientX - mouseX;
       const deltaY = event.clientY - mouseY;
 
-      // Update camera angles
-      targetCameraAngleY += deltaX * 0.01;
-      targetCameraAngleX += deltaY * 0.01;
+      // Update camera angles (inverted for natural grabbing feel)
+      targetCameraAngleY -= deltaX * 0.01;
+      targetCameraAngleX -= deltaY * 0.01;
 
       // Limit vertical angle to prevent going below 90 degrees with ground
       targetCameraAngleX = Math.max(
@@ -1077,7 +1077,7 @@ function createWalls() {
   const backWallGeometry = new THREE.BoxGeometry(10.5, 8.4, 0.3); // Increased height to 7.5 units
   const backWall = new THREE.Mesh(backWallGeometry, backWallMaterial);
   backWall.position.z = -5.15; // Adjusted position to account for thickness
-  backWall.position.x = -0.10; // Adjusted position to account for thickness
+  backWall.position.x = -0.1; // Adjusted position to account for thickness
   backWall.position.y = 1.5; // Centered between floor bottom (-2.75) and new top (4.5): (-2.75 + 4.5) / 2 = 0.875
   backWall.castShadow = true;
   backWall.receiveShadow = true;
