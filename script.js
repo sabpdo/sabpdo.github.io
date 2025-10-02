@@ -104,9 +104,9 @@ function init3D() {
   );
 
   // Set initial camera position for diagonal corner view
-  cameraAngleX = 0.1; // Slight downward angle
+  cameraAngleX = 0.5; // Higher up but tilted down slightly
   cameraAngleY = 0.8; // Diagonal corner view angle
-  targetCameraAngleX = 0.1;
+  targetCameraAngleX = 0.5;
   targetCameraAngleY = 0.8;
   cameraDistance = 12; // More zoomed out
   targetCameraDistance = 12;
@@ -226,6 +226,11 @@ async function loadAssets() {
     {
       name: "camera",
       path: "asset_glb/new_assets/zefir_camera_with_domiplan_lens.glb",
+      type: "gltf",
+    },
+    {
+      name: "wetFloorSign",
+      path: "asset_glb/new_assets/wet_floor_sign_primal_fear.glb",
       type: "gltf",
     },
   ];
@@ -382,6 +387,44 @@ function addMouseControls() {
 
   // Set initial cursor
   canvas.style.cursor = "grab";
+
+  // Add click handling for menu items
+  canvas.addEventListener("click", (event) => {
+    if (isMouseDown) return; // Don't trigger on drag
+
+    const mouse = new THREE.Vector2();
+    mouse.x = (event.clientX / canvas.clientWidth) * 2 - 1;
+    mouse.y = -(event.clientY / canvas.clientHeight) * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObjects(room.children, true);
+
+    for (let intersect of intersects) {
+      if (
+        intersect.object.name &&
+        (intersect.object.name.startsWith("menu-item-") ||
+          intersect.object.name.startsWith("menu-text-"))
+      ) {
+        const section = intersect.object.userData.section;
+        console.log(`Clicked menu item: ${section}`);
+        showContentSection(section);
+        break;
+      }
+      // Also check if we clicked on a child of a text group
+      if (
+        intersect.object.parent &&
+        intersect.object.parent.name &&
+        intersect.object.parent.name.startsWith("menu-text-")
+      ) {
+        const section = intersect.object.parent.userData.section;
+        console.log(`Clicked menu text: ${section}`);
+        showContentSection(section);
+        break;
+      }
+    }
+  });
 }
 
 // Create the 3D room
@@ -500,6 +543,9 @@ function createRoomWithAssets() {
 
   // Create shelves above the desk
   createShelves();
+
+  // Create 3D whiteboard for navigation
+  createNavigationWhiteboard();
 
   // Books for decoration on shelves - positioned on the right shelves
   const books = prepareAsset(loadedAssets.books);
@@ -755,6 +801,166 @@ function createWalls() {
   room.add(windowOpening);
 }
 
+// Create 3D navigation sign using wet floor sign asset
+function createNavigationWhiteboard() {
+  // Use the wet floor sign asset
+  const wetFloorSign = prepareAsset(loadedAssets.wetFloorSign);
+  if (wetFloorSign) {
+    wetFloorSign.position.set(5.5, 0.15, -3.5);
+    wetFloorSign.scale.set(0.75, 0.75, 0.75);
+    increaseBrightnessOnGroup(wetFloorSign, 1);
+    wetFloorSign.rotation.y = Math.PI / 11; // Angle it toward the room
+    room.add(wetFloorSign);
+  }
+
+  // Create white rectangle overlay for menu items
+  createMenuOverlay();
+}
+
+// Create white rectangle overlay with clickable menu items
+function createMenuOverlay() {
+  // Create white rectangle background (thicker)
+  const overlayGeometry = new THREE.BoxGeometry(1, 2, 0.1); // Added depth for thickness
+  const overlayMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.9,
+  });
+  const overlay = new THREE.Mesh(overlayGeometry, overlayMaterial);
+  overlay.position.set(5.6, -0.2, -3.05);
+  overlay.rotation.y = Math.PI / 8; // Match the sign angle
+  overlay.rotation.x = -Math.PI / 17;
+  overlay.name = "menu-overlay";
+  room.add(overlay);
+
+  // Create name header
+  createNameHeader();
+
+  // Create clickable menu items
+  createClickableMenuItems();
+}
+
+// Create name header for the board
+function createNameHeader() {
+  // Create name text overlay
+  createMenuTextOverlay("Sabrina Do", 5.6, 0.4, "name-header", -1);
+}
+
+// Create clickable menu items
+function createClickableMenuItems() {
+  const menuItems = [
+    { text: "about me", section: "about" },
+    { text: "projects", section: "projects" },
+    { text: "work experience", section: "experience" },
+    { text: "education", section: "education" },
+    { text: "contact me", section: "contact" },
+  ];
+
+  menuItems.forEach((item, index) => {
+    // Create clickable button with better proportions
+    const itemGeometry = new THREE.BoxGeometry(0.9, 0.12, 0.02);
+    const itemMaterial = new THREE.MeshLambertMaterial({
+      color: 0xf8bbd9, // Light pink background
+      transparent: true,
+      opacity: 0.95,
+    });
+    const menuItem = new THREE.Mesh(itemGeometry, itemMaterial);
+
+    // Position items vertically on the overlay (matching white background coordinates)
+    const yOffset = 0.3 - index * 0.25; // Increased spacing from 0.17 to 0.25
+    menuItem.position.set(5.6, -0.2 + yOffset, -3.05); // Same as white background
+    menuItem.rotation.y = Math.PI / 8; // Match the sign angle
+    menuItem.rotation.x = -Math.PI / 17; // Match the overlay tilt
+    menuItem.name = `menu-item-${item.section}`;
+    menuItem.userData = { section: item.section };
+
+    room.add(menuItem);
+
+    // Create subtle shadow/outline for depth
+    const shadowGeometry = new THREE.BoxGeometry(0.92, 0.14, 0.01);
+    const shadowMaterial = new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.15,
+    });
+    const shadowItem = new THREE.Mesh(shadowGeometry, shadowMaterial);
+    shadowItem.position.set(5.6, -0.2 + yOffset, -3.06); // Behind the button
+    shadowItem.rotation.y = Math.PI / 8;
+    shadowItem.rotation.x = -Math.PI / 17;
+    room.add(shadowItem);
+
+    // Create HTML text overlay for each menu item with index
+    createMenuTextOverlay(item.text, 5.6, -0.2 + yOffset, item.section, index);
+  });
+}
+
+// Create HTML text overlay for menu items
+function createMenuTextOverlay(text, x, y, section, index) {
+  // Create a div element for the text
+  const textDiv = document.createElement("div");
+  textDiv.className = "menu-text-overlay";
+  textDiv.textContent = text;
+  textDiv.style.position = "absolute";
+  textDiv.style.color = "#2c2c2c";
+  textDiv.style.fontSize = section === "name-header" ? "18px" : "14px"; // Larger font for name
+  textDiv.style.fontWeight = "bold";
+  textDiv.style.fontFamily = "Arial, sans-serif";
+  textDiv.style.pointerEvents = "none";
+  textDiv.style.zIndex = "1000";
+  textDiv.style.textAlign = "center";
+  textDiv.style.width = "120px";
+  textDiv.style.height = section === "name-header" ? "30px" : "25px"; // Taller for name
+  textDiv.style.lineHeight = section === "name-header" ? "30px" : "25px";
+  textDiv.style.userSelect = "none";
+
+  // Store the section, coordinates, and index for positioning
+  textDiv.dataset.section = section;
+  textDiv.dataset.x = x;
+  textDiv.dataset.y = y;
+  textDiv.dataset.index = index;
+
+  // Add to the page
+  document.body.appendChild(textDiv);
+
+  // Position the text statically on the board
+  positionTextOverlay(textDiv, x, y);
+
+  // Store reference for updates
+  if (!window.menuTextOverlays) {
+    window.menuTextOverlays = [];
+  }
+  window.menuTextOverlays.push(textDiv);
+}
+
+// Position text overlay on the 3D board
+function positionTextOverlay(textDiv, x, y) {
+  // Convert 3D board coordinates to screen coordinates
+  const vector = new THREE.Vector3(x, y, -3.0);
+  vector.project(camera);
+
+  const canvas = document.getElementById("room-canvas");
+  const canvasRect = canvas.getBoundingClientRect();
+
+  // Position text on the board (not moving with camera rotation)
+  const boardX = (vector.x * 0.5 + 0.5) * canvasRect.width + canvasRect.left;
+  const boardY = (vector.y * -0.5 + 0.5) * canvasRect.height + canvasRect.top;
+
+  textDiv.style.left = boardX - 60 + "px"; // Center the text
+  textDiv.style.top = boardY - 10 + "px";
+}
+
+// Update all text overlay positions when camera moves
+function updateTextOverlays() {
+  if (window.menuTextOverlays) {
+    window.menuTextOverlays.forEach((textDiv) => {
+      // Get the 3D position from the text element's data
+      const x = parseFloat(textDiv.dataset.x || 5.6);
+      const y = parseFloat(textDiv.dataset.y || -0.2);
+      positionTextOverlay(textDiv, x, y);
+    });
+  }
+}
+
 function createShelves() {
   // Top shelf - cute pastel blue
   const shelfGeometry = new THREE.BoxGeometry(3, 0.1, 1);
@@ -878,6 +1084,9 @@ function animate() {
   // Update camera position
   updateCameraPosition();
 
+  // Update text overlay positions
+  updateTextOverlays();
+
   if (renderer && scene && camera) {
     renderer.render(scene, camera);
   } else {
@@ -899,9 +1108,9 @@ function initModal() {
   const contentSections = document.querySelectorAll(".content-section");
   const closeBtn = document.getElementById("close-modal");
 
-  // Show modal on page load
+  // Hide CSS modal since we're using 3D whiteboard
   if (modal) {
-    modal.style.display = "block";
+    modal.style.display = "none";
   }
 
   // Handle navigation clicks

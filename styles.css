@@ -168,23 +168,77 @@ body {
   pointer-events: none;
 }
 
-/* Modal Navigation */
+/* Modal Navigation - Whiteboard Style */
 .modal {
   position: fixed;
   top: 50%;
   right: 50px;
   transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(15px);
-  border-radius: 25px;
+  background: #f8f8f8;
+  border-radius: 8px;
   padding: 30px;
   z-index: 1000;
-  border: 2px solid rgba(255, 182, 193, 0.5);
-  box-shadow: 0 8px 32px rgba(255, 182, 193, 0.3);
+  border: 3px solid #333;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  /* Whiteboard frame effect */
+  border-left: 8px solid #666;
+  border-right: 8px solid #666;
+  border-top: 8px solid #666;
+  border-bottom: 12px solid #666;
+  /* Add some texture */
+  background-image: linear-gradient(
+      45deg,
+      transparent 25%,
+      rgba(255, 255, 255, 0.1) 25%,
+      rgba(255, 255, 255, 0.1) 50%,
+      transparent 50%,
+      transparent 75%,
+      rgba(255, 255, 255, 0.1) 75%
+    ),
+    linear-gradient(
+      45deg,
+      transparent 25%,
+      rgba(0, 0, 0, 0.05) 25%,
+      rgba(0, 0, 0, 0.05) 50%,
+      transparent 50%,
+      transparent 75%,
+      rgba(0, 0, 0, 0.05) 75%
+    );
+  background-size: 20px 20px, 10px 10px;
+  background-position: 0 0, 0 0;
 }
 
 .modal-content {
   text-align: center;
+  position: relative;
+}
+
+/* Add mounting hardware effect */
+.modal::before {
+  content: "";
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.modal::after {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: #666;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .name-title {
