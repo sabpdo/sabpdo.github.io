@@ -1463,6 +1463,9 @@ function initModal() {
     });
   }
 
+  // Handle project folder clicks
+  initProjectFolders();
+
   // Handle resume preview modal click outside to close
   const resumePreviewModal = document.querySelector(".resume-preview-modal");
   if (resumePreviewModal) {
@@ -2084,6 +2087,61 @@ function initMusicPlayer() {
 // so define a no-op to satisfy the script's expected global.
 window.onSpotifyWebPlaybackSDKReady =
   window.onSpotifyWebPlaybackSDKReady || function () {};
+
+// Project folder functionality
+function initProjectFolders() {
+  const projectFolders = document.querySelectorAll(".project-folder");
+
+  const projectUrls = {
+    goldenbook: "https://goldenbookofficial.vercel.app/",
+    "triangle-completion":
+      "https://github.com/sabpdo/Unity-Triangle_Completion",
+    "leftover-love": "https://leftover-love.vercel.app/welcome",
+    "eco-calc": "https://devpost.com/software/eco-calc",
+    compiler: "https://github.com/6110-sp25/sp25-team1-waffle",
+    qoom: "https://kindswan26.qoom.space/edit/Unnamed/index.html",
+    portfolio: "#", // Current page
+    more: "https://github.com/sabpdo",
+  };
+
+  projectFolders.forEach((folder) => {
+    folder.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const projectType = folder.getAttribute("data-project");
+      const url = projectUrls[projectType];
+
+      if (url && url !== "#") {
+        // Add a nice click animation
+        folder.style.transform = "scale(0.95)";
+        setTimeout(() => {
+          folder.style.transform = "";
+          window.open(url, "_blank");
+        }, 150);
+      } else if (projectType === "portfolio") {
+        // For portfolio, just close the modal since we're already here
+        hideAllContentSections();
+      }
+    });
+
+    // Add keyboard accessibility
+    folder.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        folder.click();
+      }
+    });
+
+    // Make folders focusable
+    folder.setAttribute("tabindex", "0");
+    folder.setAttribute("role", "button");
+    folder.setAttribute(
+      "aria-label",
+      `Open ${folder.querySelector(".folder-name").textContent} project`
+    );
+  });
+}
 
 // Clean up on page unload
 window.addEventListener("beforeunload", () => {
