@@ -24,6 +24,8 @@ let touchStartX = 0;
 let touchStartY = 0;
 let touchStartAngleX = 0;
 let touchStartAngleY = 0;
+let initialDistance = 0;
+let initialCameraDistance = 0;
 
 // Asset loaders
 let objLoader, gltfLoader, fbxLoader;
@@ -31,7 +33,7 @@ let loadedAssets = {};
 
 // Desktop hover state for 3D menu items
 let hoveredMenuMesh = null;
-const MENU_HOVER_SCALE_DESKTOP = 1.2;
+const MENU_HOVER_SCALE_DESKTOP = 1.1;
 
 // 3D Menu system for mobile
 let mobile3DMenu = null;
@@ -44,14 +46,12 @@ const SATURATION_BOOST = 1.8; // Stronger saturation boost
 
 // Mobile detection - temporarily show 3D menu on desktop for testing
 function isMobileScreen() {
-  return true; // Temporarily always return true to show 3D menu on desktop
-  // Original code (commented out for testing):
-  // return (
-  //   window.innerWidth <= 480 ||
-  //   /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-  //     navigator.userAgent
-  //   )
-  // );
+  return (
+    window.innerWidth <= 480 ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    )
+  );
 }
 
 // Utility: boost an THREE.Color's saturation in HSL space
@@ -719,8 +719,8 @@ function addMouseControls() {
     isMouseDown = false;
     canvas.style.cursor = "grab";
 
-    // Handle 3D menu clicks on mobile
-    if (isMobileScreen() && mobileMenuGroup && mobileMenuGroup.visible) {
+    // Handle 3D menu clicks (both mobile and desktop)
+    if (mobileMenuGroup && mobileMenuGroup.visible) {
       const mouse = new THREE.Vector2();
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -858,6 +858,16 @@ function addMouseControls() {
           touchStartY = touch.clientY;
           touchStartAngleX = targetCameraAngleX;
           touchStartAngleY = targetCameraAngleY;
+        } else if (event.touches.length === 2) {
+          // Pinch gesture start
+          isTouching = true;
+          const touch1 = event.touches[0];
+          const touch2 = event.touches[1];
+          initialDistance = Math.sqrt(
+            Math.pow(touch2.clientX - touch1.clientX, 2) +
+              Math.pow(touch2.clientY - touch1.clientY, 2)
+          );
+          initialCameraDistance = targetCameraDistance;
         }
       },
       { passive: false }
@@ -885,6 +895,22 @@ function addMouseControls() {
 
           lastTouchX = touch.clientX;
           lastTouchY = touch.clientY;
+        } else if (isTouching && event.touches.length === 2) {
+          // Pinch gesture - zoom in/out
+          const touch1 = event.touches[0];
+          const touch2 = event.touches[1];
+          const currentDistance = Math.sqrt(
+            Math.pow(touch2.clientX - touch1.clientX, 2) +
+              Math.pow(touch2.clientY - touch1.clientY, 2)
+          );
+
+          if (initialDistance > 0) {
+            const scale = currentDistance / initialDistance;
+            targetCameraDistance = Math.max(
+              2,
+              Math.min(15, initialCameraDistance / scale)
+            );
+          }
         }
       },
       { passive: false }
@@ -895,25 +921,40 @@ function addMouseControls() {
       "touchend",
       (event) => {
         event.preventDefault();
-        isTouching = false;
 
-        // Handle 3D menu clicks on mobile
-        if (mobileMenuGroup && mobileMenuGroup.visible) {
-          const touch = event.changedTouches[0];
-          const mouse = new THREE.Vector2();
-          mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
-          mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+        // Only handle menu clicks for single touch
+        if (event.touches.length === 0 && event.changedTouches.length === 1) {
+          isTouching = false;
+          initialDistance = 0;
+          initialCameraDistance = 0;
 
-          const raycaster = new THREE.Raycaster();
-          raycaster.setFromCamera(mouse, camera);
+          // Handle 3D menu clicks on mobile
+          if (mobileMenuGroup && mobileMenuGroup.visible) {
+            const touch = event.changedTouches[0];
+            const mouse = new THREE.Vector2();
+            mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
 
-          const intersects = raycaster.intersectObjects(
-            mobileMenuButtons,
-            true
-          );
-          if (intersects.length > 0) {
-            handle3DMenuClick(intersects[0].object);
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(
+              mobileMenuButtons,
+              true
+            );
+            if (intersects.length > 0) {
+              handle3DMenuClick(intersects[0].object);
+            }
           }
+        } else if (event.touches.length === 1) {
+          // Transition from two fingers to one finger
+          const touch = event.touches[0];
+          lastTouchX = touch.clientX;
+          lastTouchY = touch.clientY;
+          touchStartX = touch.clientX;
+          touchStartY = touch.clientY;
+          touchStartAngleX = targetCameraAngleX;
+          touchStartAngleY = targetCameraAngleY;
         }
       },
       { passive: false }
@@ -925,6 +966,8 @@ function addMouseControls() {
       (event) => {
         event.preventDefault();
         isTouching = false;
+        initialDistance = 0;
+        initialCameraDistance = 0;
       },
       { passive: false }
     );
@@ -998,7 +1041,7 @@ function createMobile3DMenu() {
 
   mobileMenuButtons = [];
 
-  // Menu is always visible in the room
+  // Menu is always visible in the room (both mobile and desktop)
   mobileMenuGroup.visible = true;
 
   scene.add(mobileMenuGroup);
@@ -1031,48 +1074,103 @@ function createMenuTextOverlays(menuItems) {
     context.fillStyle = "transparent";
     context.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Mobile-specific styling adjustments
+    const isMobile = isMobileScreen();
+    const fontSizeMultiplier = isMobile ? 1.2 : 1.0; // Larger text on mobile
+    const outlineWidthMultiplier = isMobile ? 1.5 : 1.0; // Thicker outlines on mobile
+
     // Set text properties - fun font and thick text
     if (item.isTitle) {
-      // Title styling - fun font, thick, dark brown
+      // Title styling - fun font, thick, dark brown with mobile optimizations
       context.fillStyle = "#2E2019"; // Dark brown for title
-      context.font = "bold 260px 'Comic Sans MS', cursive, sans-serif"; // Fun font for title
+      context.font = `bold ${Math.floor(
+        260 * fontSizeMultiplier
+      )}px 'Comic Sans MS', cursive, sans-serif`;
       context.textAlign = "left";
       context.textBaseline = "middle";
 
-      // Create thick text with multiple outlines
-      context.lineWidth = 32; // Very thick outline (scaled for high res)
+      // Create thick text with multiple outlines - enhanced for mobile
+      context.lineWidth = 32 * outlineWidthMultiplier; // Very thick outline
       context.strokeStyle = "#ffb6c1"; // Pink outline for title
       context.strokeText(item.text.toLowerCase(), 80, canvas.height / 2);
 
-      context.lineWidth = 24; // Thick middle outline
+      context.lineWidth = 24 * outlineWidthMultiplier; // Thick middle outline
       context.strokeStyle = "#ffc0cb"; // Lighter pink
       context.strokeText(item.text.toLowerCase(), 80, canvas.height / 2);
 
-      context.lineWidth = 16; // Thick inner outline
+      context.lineWidth = 16 * outlineWidthMultiplier; // Thick inner outline
       context.strokeStyle = "#ffffff"; // White inner outline
       context.strokeText(item.text.toLowerCase(), 80, canvas.height / 2);
 
-      // Fill the text
-      context.fillText(item.text.toLowerCase(), 80, canvas.height / 2);
-    } else {
-      // Menu item styling - fun font, thick, dark brown
-      context.fillStyle = "#2E2019"; // Dark brown for menu items
-      context.font = "bold 240px 'Comic Sans MS', cursive, sans-serif"; // Fun font for menu items
-      context.textAlign = "left";
-      context.textBaseline = "middle";
+      // Add shadow for better visibility on mobile
+      if (isMobile) {
+        context.shadowColor = "rgba(0, 0, 0, 0.8)";
+        context.shadowBlur = 20;
+        context.shadowOffsetX = 4;
+        context.shadowOffsetY = 4;
+      }
 
       // Fill the text
       context.fillText(item.text.toLowerCase(), 80, canvas.height / 2);
+
+      // Reset shadow
+      if (isMobile) {
+        context.shadowColor = "transparent";
+        context.shadowBlur = 0;
+        context.shadowOffsetX = 0;
+        context.shadowOffsetY = 0;
+      }
+    } else {
+      // Menu item styling - fun font, thick, dark brown with mobile optimizations
+      context.fillStyle = "#2E2019"; // Dark brown for menu items
+      context.font = `bold ${Math.floor(
+        240 * fontSizeMultiplier
+      )}px 'Comic Sans MS', cursive, sans-serif`;
+      context.textAlign = "left";
+      context.textBaseline = "middle";
+
+      // Add subtle outline for menu items on mobile
+      if (isMobile) {
+        context.lineWidth = 8 * outlineWidthMultiplier;
+        context.strokeStyle = "#ffffff"; // White outline for better visibility
+        context.strokeText(item.text.toLowerCase(), 80, canvas.height / 2);
+      }
+
+      // Add shadow for better visibility on mobile
+      if (isMobile) {
+        context.shadowColor = "rgba(0, 0, 0, 0.6)";
+        context.shadowBlur = 15;
+        context.shadowOffsetX = 3;
+        context.shadowOffsetY = 3;
+      }
+
+      // Fill the text
+      context.fillText(item.text.toLowerCase(), 80, canvas.height / 2);
+
+      // Reset shadow
+      if (isMobile) {
+        context.shadowColor = "transparent";
+        context.shadowBlur = 0;
+        context.shadowOffsetX = 0;
+        context.shadowOffsetY = 0;
+      }
     }
 
     // Create texture from canvas
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
 
-    // Create plane geometry for text - precise click alignment
+    // Create plane geometry for text - precise click alignment with mobile adjustments
+    const geometryMultiplier = isMobile ? 1.2 : 1.0; // Larger click areas on mobile
     const textGeometry = item.isTitle
-      ? new THREE.PlaneGeometry(5.5, 1.6) // Precise title click area
-      : new THREE.PlaneGeometry(4.5, 1.2); // Precise menu click area
+      ? new THREE.PlaneGeometry(
+          5.5 * geometryMultiplier,
+          1.6 * geometryMultiplier
+        ) // Precise title click area
+      : new THREE.PlaneGeometry(
+          4.5 * geometryMultiplier,
+          1.2 * geometryMultiplier
+        ); // Precise menu click area
     const textMaterial = new THREE.MeshBasicMaterial({
       map: texture,
       transparent: true,
@@ -1192,7 +1290,7 @@ function addMobileMenuToggle() {
   // Add hover effects
   toggleButton.addEventListener("mouseenter", () => {
     toggleButton.style.background = "rgba(255, 192, 203, 0.95)";
-    toggleButton.style.transform = "scale(1.1)";
+    toggleButton.style.transform = "scale(1.05)";
   });
 
   toggleButton.addEventListener("mouseleave", () => {
