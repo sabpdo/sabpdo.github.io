@@ -6,7 +6,7 @@
   "scripts": {
     "start": "live-server --port=3000 --open=/",
     "dev": "live-server --port=3000 --open=/ --watch=.",
-    "build": "terser script.js -o script.min.js -c -m",
+    "build": "terser script.min.js -o script.js -c -m",
     "deploy": "gh-pages -d ."
   },
   "keywords": [

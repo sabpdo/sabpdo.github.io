@@ -16,9 +16,22 @@ let cameraAngleY = 0;
 let targetCameraAngleX = 0;
 let targetCameraAngleY = 0;
 
+// Mobile touch controls
+let isTouching = false;
+let lastTouchX = 0;
+let lastTouchY = 0;
+let touchStartX = 0;
+let touchStartY = 0;
+let touchStartAngleX = 0;
+let touchStartAngleY = 0;
+
 // Asset loaders
 let objLoader, gltfLoader, fbxLoader;
 let loadedAssets = {};
+
+// Desktop hover state for 3D menu items
+let hoveredMenuMesh = null;
+const MENU_HOVER_SCALE_DESKTOP = 1.2;
 
 // 3D Menu system for mobile
 let mobile3DMenu = null;
@@ -724,6 +737,40 @@ function addMouseControls() {
 
   // Mouse move event
   canvas.addEventListener("mousemove", (event) => {
+    // Desktop-only hover scale for 3D menu items
+    if (
+      !isMobileScreen() &&
+      mobileMenuGroup &&
+      mobileMenuGroup.visible &&
+      mobileMenuButtons.length > 0
+    ) {
+      const mouse = new THREE.Vector2();
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(mobileMenuButtons, true);
+
+      if (intersects.length > 0) {
+        const targetMesh = intersects[0].object;
+        if (hoveredMenuMesh && hoveredMenuMesh !== targetMesh) {
+          hoveredMenuMesh.scale.set(1, 1, 1);
+        }
+        hoveredMenuMesh = targetMesh;
+        hoveredMenuMesh.scale.set(
+          MENU_HOVER_SCALE_DESKTOP,
+          MENU_HOVER_SCALE_DESKTOP,
+          MENU_HOVER_SCALE_DESKTOP
+        );
+        canvas.style.cursor = "pointer";
+      } else if (hoveredMenuMesh) {
+        hoveredMenuMesh.scale.set(1, 1, 1);
+        hoveredMenuMesh = null;
+        canvas.style.cursor = "grab";
+      }
+    }
+
     if (isMouseDown) {
       const deltaX = event.clientX - mouseX;
       const deltaY = event.clientY - mouseY;
@@ -747,6 +794,12 @@ function addMouseControls() {
   canvas.addEventListener("mouseleave", () => {
     isMouseDown = false;
     canvas.style.cursor = "grab";
+
+    // Reset hover scale on leave
+    if (hoveredMenuMesh) {
+      hoveredMenuMesh.scale.set(1, 1, 1);
+      hoveredMenuMesh = null;
+    }
   });
 
   // Mouse wheel event for zooming
@@ -786,6 +839,96 @@ function addMouseControls() {
 
   // Set initial cursor
   canvas.style.cursor = "grab";
+  // Ensure touch gestures are captured by the canvas, not the browser
+  canvas.style.touchAction = "none";
+
+  // Mobile touch controls (only for mobile devices)
+  if (isMobileScreen()) {
+    // Touch start event
+    canvas.addEventListener(
+      "touchstart",
+      (event) => {
+        event.preventDefault();
+        if (event.touches.length === 1) {
+          isTouching = true;
+          const touch = event.touches[0];
+          lastTouchX = touch.clientX;
+          lastTouchY = touch.clientY;
+          touchStartX = touch.clientX;
+          touchStartY = touch.clientY;
+          touchStartAngleX = targetCameraAngleX;
+          touchStartAngleY = targetCameraAngleY;
+        }
+      },
+      { passive: false }
+    );
+
+    // Touch move event
+    canvas.addEventListener(
+      "touchmove",
+      (event) => {
+        event.preventDefault();
+        if (isTouching && event.touches.length === 1) {
+          const touch = event.touches[0];
+          const deltaX = touch.clientX - lastTouchX;
+          const deltaY = touch.clientY - lastTouchY;
+
+          // Update camera angles (inverted for natural touch feel)
+          targetCameraAngleY -= deltaX * 0.01;
+          targetCameraAngleX += deltaY * 0.01;
+
+          // Limit vertical angle to prevent going below 90 degrees with ground
+          targetCameraAngleX = Math.max(
+            0.1, // Minimum angle (slightly above 90 degrees)
+            Math.min(Math.PI / 2 - 0.1, targetCameraAngleX)
+          );
+
+          lastTouchX = touch.clientX;
+          lastTouchY = touch.clientY;
+        }
+      },
+      { passive: false }
+    );
+
+    // Touch end event
+    canvas.addEventListener(
+      "touchend",
+      (event) => {
+        event.preventDefault();
+        isTouching = false;
+
+        // Handle 3D menu clicks on mobile
+        if (mobileMenuGroup && mobileMenuGroup.visible) {
+          const touch = event.changedTouches[0];
+          const mouse = new THREE.Vector2();
+          mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+          mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+          const raycaster = new THREE.Raycaster();
+          raycaster.setFromCamera(mouse, camera);
+
+          const intersects = raycaster.intersectObjects(
+            mobileMenuButtons,
+            true
+          );
+          if (intersects.length > 0) {
+            handle3DMenuClick(intersects[0].object);
+          }
+        }
+      },
+      { passive: false }
+    );
+
+    // Touch cancel event
+    canvas.addEventListener(
+      "touchcancel",
+      (event) => {
+        event.preventDefault();
+        isTouching = false;
+      },
+      { passive: false }
+    );
+  }
 }
 
 // Create the 3D room
