@@ -20,8 +20,26 @@ let targetCameraAngleY = 0;
 let objLoader, gltfLoader, fbxLoader;
 let loadedAssets = {};
 
+// 3D Menu system for mobile
+let mobile3DMenu = null;
+let isMobile3DMenuActive = false;
+let mobileMenuButtons = [];
+let mobileMenuGroup = null;
+
 // Global saturation boost factor for all materials (1.0 = no change)
 const SATURATION_BOOST = 1.8; // Stronger saturation boost
+
+// Mobile detection - temporarily show 3D menu on desktop for testing
+function isMobileScreen() {
+  return true; // Temporarily always return true to show 3D menu on desktop
+  // Original code (commented out for testing):
+  // return (
+  //   window.innerWidth <= 480 ||
+  //   /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+  //     navigator.userAgent
+  //   )
+  // );
+}
 
 // Utility: boost an THREE.Color's saturation in HSL space
 function boostColorSaturation(color, factor) {
@@ -684,9 +702,24 @@ function addMouseControls() {
   });
 
   // Mouse up event
-  canvas.addEventListener("mouseup", () => {
+  canvas.addEventListener("mouseup", (event) => {
     isMouseDown = false;
     canvas.style.cursor = "grab";
+
+    // Handle 3D menu clicks on mobile
+    if (isMobileScreen() && mobileMenuGroup && mobileMenuGroup.visible) {
+      const mouse = new THREE.Vector2();
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+
+      const intersects = raycaster.intersectObjects(mobileMenuButtons, true);
+      if (intersects.length > 0) {
+        handle3DMenuClick(intersects[0].object);
+      }
+    }
   });
 
   // Mouse move event
@@ -772,6 +805,267 @@ function createBasicRoom() {
 
   scene.add(room);
   console.log("Basic 3D room created successfully!");
+}
+
+// Create 3D mobile menu with HTML text overlays
+function createMobile3DMenu() {
+  if (mobileMenuGroup) {
+    scene.remove(mobileMenuGroup);
+  }
+
+  mobileMenuGroup = new THREE.Group();
+  mobileMenuGroup.name = "mobile3DMenu";
+
+  // No background panel - just text floating in space
+
+  // Menu items with title - shifted left by 3 units
+  const menuItems = [
+    {
+      name: "title",
+      position: { x: 7.75, y: 5, z: -5 },
+      text: "sabrina do",
+      isTitle: true,
+    },
+    {
+      name: "about",
+      position: { x: 7.5, y: 4.25, z: -5 },
+      text: "about me",
+    },
+    {
+      name: "projects",
+      position: { x: 7.5, y: 3.5, z: -5 },
+      text: "projects",
+    },
+    {
+      name: "experience",
+      position: { x: 7.5, y: 2.75, z: -5 },
+      text: "work experience",
+    },
+    {
+      name: "education",
+      position: { x: 7.5, y: 2, z: -5 },
+      text: "education",
+    },
+    {
+      name: "contact",
+      position: { x: 7.5, y: 1.25, z: -5 },
+      text: "contact me",
+    },
+  ];
+
+  mobileMenuButtons = [];
+
+  // Menu is always visible in the room
+  mobileMenuGroup.visible = true;
+
+  scene.add(mobileMenuGroup);
+
+  // Create HTML text overlays for the menu
+  createMenuTextOverlays(menuItems);
+
+  console.log("3D Mobile menu created successfully!");
+}
+
+// Create 3D text geometry for menu buttons
+function createMenuTextOverlays(menuItems) {
+  // Remove existing text overlays
+  const existingOverlays = document.querySelectorAll(".menu-text-overlay");
+  existingOverlays.forEach((overlay) => overlay.remove());
+
+  // Create 3D text for each menu item
+  menuItems.forEach((item, index) => {
+    // Create text geometry using canvas texture - high resolution for stability
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    canvas.width = 2048;
+    canvas.height = 512;
+
+    // Enable better rendering
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+
+    // Set canvas background
+    context.fillStyle = "transparent";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Set text properties - fun font and thick text
+    if (item.isTitle) {
+      // Title styling - fun font, thick, dark brown
+      context.fillStyle = "#2E2019"; // Dark brown for title
+      context.font = "bold 260px 'Comic Sans MS', cursive, sans-serif"; // Fun font for title
+      context.textAlign = "left";
+      context.textBaseline = "middle";
+
+      // Create thick text with multiple outlines
+      context.lineWidth = 32; // Very thick outline (scaled for high res)
+      context.strokeStyle = "#ffb6c1"; // Pink outline for title
+      context.strokeText(item.text.toLowerCase(), 80, canvas.height / 2);
+
+      context.lineWidth = 24; // Thick middle outline
+      context.strokeStyle = "#ffc0cb"; // Lighter pink
+      context.strokeText(item.text.toLowerCase(), 80, canvas.height / 2);
+
+      context.lineWidth = 16; // Thick inner outline
+      context.strokeStyle = "#ffffff"; // White inner outline
+      context.strokeText(item.text.toLowerCase(), 80, canvas.height / 2);
+
+      // Fill the text
+      context.fillText(item.text.toLowerCase(), 80, canvas.height / 2);
+    } else {
+      // Menu item styling - fun font, thick, dark brown
+      context.fillStyle = "#2E2019"; // Dark brown for menu items
+      context.font = "bold 240px 'Comic Sans MS', cursive, sans-serif"; // Fun font for menu items
+      context.textAlign = "left";
+      context.textBaseline = "middle";
+
+      // Fill the text
+      context.fillText(item.text.toLowerCase(), 80, canvas.height / 2);
+    }
+
+    // Create texture from canvas
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+
+    // Create plane geometry for text - precise click alignment
+    const textGeometry = item.isTitle
+      ? new THREE.PlaneGeometry(5.5, 1.6) // Precise title click area
+      : new THREE.PlaneGeometry(4.5, 1.2); // Precise menu click area
+    const textMaterial = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 1.0,
+      side: THREE.DoubleSide, // Make it visible from both sides
+      alphaTest: 0.1, // Better transparency handling
+      depthWrite: false, // Prevent depth issues
+    });
+
+    // No wireframe - clean text appearance
+
+    // Create front-facing text
+    const textMeshFront = new THREE.Mesh(textGeometry, textMaterial);
+    textMeshFront.position.set(
+      item.position.x,
+      item.position.y,
+      item.position.z
+    );
+    textMeshFront.rotation.y = 0; // Face forward (fixed direction)
+
+    // Add both to the menu group
+    mobileMenuGroup.add(textMeshFront);
+
+    // Make clickable only if it's not the title
+    if (!item.isTitle) {
+      textMeshFront.userData = {
+        type: "menuButton",
+        sectionId: item.name,
+        index: index,
+      };
+      mobileMenuButtons.push(textMeshFront);
+    } else {
+      // Title is not clickable
+      textMeshFront.userData = {
+        type: "title",
+        sectionId: "title",
+        index: index,
+      };
+    }
+  });
+}
+
+// Toggle 3D mobile menu
+function toggleMobile3DMenu() {
+  if (!mobileMenuGroup) return;
+
+  isMobile3DMenuActive = !isMobile3DMenuActive;
+  mobileMenuGroup.visible = isMobile3DMenuActive;
+
+  // Always hide the regular modal
+  const regularModal = document.getElementById("navigation-modal");
+  if (regularModal) {
+    regularModal.style.display = "none"; // Always hide regular modal
+  }
+
+  console.log("3D Mobile menu toggled:", isMobile3DMenuActive);
+}
+
+// Handle 3D menu button clicks
+function handle3DMenuClick(intersected) {
+  if (
+    !intersected ||
+    !intersected.userData ||
+    intersected.userData.type !== "menuButton"
+  ) {
+    return;
+  }
+
+  const sectionId = intersected.userData.sectionId;
+  console.log("3D Menu button clicked:", sectionId);
+
+  // Hide the 3D menu
+  toggleMobile3DMenu();
+
+  // Show the content section
+  showContentSection(sectionId);
+
+  // Add visual feedback - scale text slightly
+  const originalScale = intersected.scale.clone();
+  intersected.scale.multiplyScalar(1.1); // Slightly larger
+  setTimeout(() => {
+    intersected.scale.copy(originalScale);
+  }, 200);
+}
+
+// Add mobile menu toggle button
+function addMobileMenuToggle() {
+  // Remove existing toggle button
+  const existingToggle = document.getElementById("mobile-menu-toggle");
+  if (existingToggle) {
+    existingToggle.remove();
+  }
+
+  // Create a floating toggle button for mobile
+  const toggleButton = document.createElement("button");
+  toggleButton.id = "mobile-menu-toggle";
+  toggleButton.innerHTML = "☰";
+  toggleButton.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 182, 193, 0.9);
+    border: 2px solid #8b4513;
+    color: #8b4513;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  `;
+
+  // Add hover effects
+  toggleButton.addEventListener("mouseenter", () => {
+    toggleButton.style.background = "rgba(255, 192, 203, 0.95)";
+    toggleButton.style.transform = "scale(1.1)";
+  });
+
+  toggleButton.addEventListener("mouseleave", () => {
+    toggleButton.style.background = "rgba(255, 182, 193, 0.9)";
+    toggleButton.style.transform = "scale(1)";
+  });
+
+  // Add click handler
+  toggleButton.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleMobile3DMenu();
+  });
+
+  document.body.appendChild(toggleButton);
+  console.log("Mobile menu toggle button added");
 }
 
 // Clean up and prepare asset for use
@@ -1074,7 +1368,7 @@ function createWalls() {
   room.add(floorBase);
 
   // Back wall - made thicker and slightly taller
-  const backWallGeometry = new THREE.BoxGeometry(10.5, 8.4, 0.3); // Increased height to 7.5 units
+  const backWallGeometry = new THREE.BoxGeometry(10.4, 8.4, 0.3);
   const backWall = new THREE.Mesh(backWallGeometry, backWallMaterial);
   backWall.position.z = -5.15; // Adjusted position to account for thickness
   backWall.position.x = -0.1; // Adjusted position to account for thickness
@@ -1125,7 +1419,7 @@ function createWalls() {
   room.add(leftWallRight);
 
   // Top border/trim for back wall
-  const backWallTrimGeometry = new THREE.BoxGeometry(10.6, 0.3, 0.6); // Dark brown trim
+  const backWallTrimGeometry = new THREE.BoxGeometry(10.55, 0.3, 0.6); // Dark brown trim
   const backWallTrimMaterial = new THREE.MeshLambertMaterial({
     color: 0x654321,
   }); // Rich dark brown color
@@ -1589,6 +1883,11 @@ function animate() {
   // Animate sunlight beams
   animateSunlightBeams();
 
+  // Ensure 3D menu stays visible
+  if (mobileMenuGroup) {
+    mobileMenuGroup.visible = true;
+  }
+
   if (renderer && scene && camera) {
     renderer.render(scene, camera);
   } else {
@@ -1606,6 +1905,16 @@ function onWindowResize() {
   if (composer) {
     composer.setSize(window.innerWidth, window.innerHeight);
   }
+
+  // Handle mobile/desktop menu switching
+  const modal = document.getElementById("navigation-modal");
+  const mobileToggle = document.getElementById("mobile-menu-toggle");
+
+  // Always use 3D menu mode
+  if (modal) modal.style.display = "none"; // Always hide regular modal
+  if (!mobileMenuGroup) {
+    createMobile3DMenu();
+  }
 }
 
 // Modal functionality
@@ -1614,6 +1923,10 @@ function initModal() {
   const navLinks = document.querySelectorAll(".nav-link");
   const contentSections = document.querySelectorAll(".content-section");
   const closeBtn = document.getElementById("close-modal");
+
+  // Always create 3D menu
+  createMobile3DMenu();
+  // Don't add toggle button since menu is always visible
 
   // Add hover functionality to hide/show glow
   if (modal) {
@@ -1637,9 +1950,9 @@ function initModal() {
     });
   });
 
-  // Show modal on page load
+  // Always hide regular modal and show 3D menu
   if (modal) {
-    modal.style.display = "block";
+    modal.style.display = "none"; // Always hide regular modal
   }
 
   // Handle navigation clicks
@@ -1766,6 +2079,11 @@ function showContentSection(sectionId) {
   // Prevent scrolling when modal opens
   preventBodyScroll();
 
+  // Ensure 3D menu stays visible
+  if (mobileMenuGroup) {
+    mobileMenuGroup.visible = true;
+  }
+
   // Small delay to ensure smooth transition
   setTimeout(() => {
     // Show the selected section
@@ -1779,6 +2097,11 @@ function showContentSection(sectionId) {
           "Experience section opened - music player should be hidden"
         );
       }
+    }
+
+    // Ensure 3D menu is still visible after content section loads
+    if (mobileMenuGroup) {
+      mobileMenuGroup.visible = true;
     }
   }, 50);
 }
@@ -2069,6 +2392,9 @@ class SpotifyMusicPlayer {
       this.musicContent.classList.add("show");
       this.musicToggle.innerHTML = '<i class="fas fa-chevron-up"></i>';
       console.log("Music player expanded");
+
+      // Show the default embed when expanding
+      this.showDefaultEmbed();
     } else {
       this.musicContent.classList.remove("show");
       this.musicToggle.innerHTML = '<i class="fas fa-music"></i>';
@@ -2077,13 +2403,30 @@ class SpotifyMusicPlayer {
   }
 
   initializeDefaultMusic() {
-    // Always start with music player expanded to show login interface
-    this.isExpanded = true;
-    this.musicContent.classList.add("show");
-    this.musicToggle.innerHTML = '<i class="fas fa-chevron-up"></i>';
+    // Check if screen is small (mobile or tablet)
+    const isSmallScreen =
+      window.innerWidth <= 768 ||
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      );
 
-    // Show the default embed immediately when the page loads
-    this.showDefaultEmbed();
+    if (isSmallScreen) {
+      // Start closed on small screens
+      this.isExpanded = false;
+      this.musicContent.classList.remove("show");
+      this.musicToggle.innerHTML = '<i class="fas fa-music"></i>';
+    } else {
+      // Start expanded on larger screens
+      this.isExpanded = true;
+      this.musicContent.classList.add("show");
+      this.musicToggle.innerHTML = '<i class="fas fa-chevron-up"></i>';
+    }
+
+    // Always create the embed, but only show it if expanded
+    this.createDefaultEmbed();
+    if (this.isExpanded) {
+      this.showDefaultEmbed();
+    }
   }
 
   playDefaultTrack() {
@@ -2096,18 +2439,12 @@ class SpotifyMusicPlayer {
     this.showDefaultEmbed();
   }
 
-  showDefaultEmbed() {
-    // Don't show embed for restricted users
+  createDefaultEmbed() {
+    // Don't create embed for restricted users
     if (this.restrictedInterfaceShown) {
-      console.log("Skipping showDefaultEmbed for restricted user");
+      console.log("Skipping createDefaultEmbed for restricted user");
       return;
     }
-
-    // Make sure music content is visible
-    this.musicContent.classList.add("show");
-
-    // Update toggle button to show expanded state
-    this.musicToggle.innerHTML = '<i class="fas fa-chevron-up"></i>';
 
     // Create or update an iframe embed for the default track
     let embed = document.getElementById("spotify-default-embed");
@@ -2116,7 +2453,6 @@ class SpotifyMusicPlayer {
       embed.id = "spotify-default-embed";
       embed.setAttribute("data-testid", "embed-iframe");
       embed.style.borderRadius = "12px";
-      embed.width = "100%";
       embed.height = "152";
       embed.frameBorder = "0";
       embed.allowFullscreen = true;
@@ -2126,7 +2462,27 @@ class SpotifyMusicPlayer {
       // Insert in the music content area
       this.musicContent.appendChild(embed);
     }
+
+    // Set responsive width
+    this.setEmbedResponsiveWidth(embed);
     embed.src = `https://open.spotify.com/embed/track/${this.defaultTrackId}?utm_source=generator`;
+  }
+
+  showDefaultEmbed() {
+    // Don't show embed for restricted users
+    if (this.restrictedInterfaceShown) {
+      console.log("Skipping showDefaultEmbed for restricted user");
+      return;
+    }
+
+    // Only show embed if music player is expanded
+    if (!this.isExpanded) {
+      console.log("Music player is closed, not showing embed");
+      return;
+    }
+
+    // Ensure embed exists
+    this.createDefaultEmbed();
 
     // Hide the custom music player and original login section
     this.musicPlayerContent.style.display = "none";
@@ -2187,6 +2543,29 @@ class SpotifyMusicPlayer {
     }
   }
 
+  setEmbedResponsiveWidth(embed) {
+    const isSmallScreen = window.innerWidth <= 768;
+    const isVerySmallScreen = window.innerWidth <= 480;
+
+    if (isVerySmallScreen) {
+      // On very small screens, use full width but smaller height
+      embed.width = "100%";
+      embed.style.width = "100%";
+      embed.style.maxWidth = "100%";
+      embed.height = "140";
+    } else if (isSmallScreen) {
+      // On small screens, use full width for better mobile experience
+      embed.width = "100%";
+      embed.style.width = "100%";
+      embed.style.maxWidth = "100%";
+    } else {
+      // On large screens, use full width
+      embed.width = "100%";
+      embed.style.width = "100%";
+      embed.style.maxWidth = "100%";
+    }
+  }
+
   setupResponsiveHandling() {
     // Handle window resize and orientation changes
     window.addEventListener("resize", () => {
@@ -2198,6 +2577,17 @@ class SpotifyMusicPlayer {
 
       // Check if screen width is small (less than 1024px)
       const isSmallWidth = window.innerWidth < 1024;
+
+      // Update embed width on resize
+      const defaultEmbed = document.getElementById("spotify-default-embed");
+      if (defaultEmbed) {
+        this.setEmbedResponsiveWidth(defaultEmbed);
+      }
+
+      const searchEmbed = document.getElementById("spotify-embed");
+      if (searchEmbed) {
+        this.setEmbedResponsiveWidth(searchEmbed);
+      }
 
       if ((isMobile || isSmallWidth) && this.isExpanded) {
         // If switching to mobile or small width screen and music player is open, close it
@@ -3024,8 +3414,8 @@ class SpotifyMusicPlayer {
     if (!embed) {
       embed = document.createElement("iframe");
       embed.id = "spotify-embed";
+      embed.setAttribute("data-testid", "embed-iframe");
       embed.style.borderRadius = "12px";
-      embed.width = "100%";
       embed.height = "152"; // compact height
       embed.frameBorder = "0";
       embed.allow =
@@ -3034,6 +3424,9 @@ class SpotifyMusicPlayer {
       // Insert near the top of the player content
       this.musicPlayerContent.prepend(embed);
     }
+
+    // Set responsive width
+    this.setEmbedResponsiveWidth(embed);
     embed.src = `https://open.spotify.com/embed/track/${trackId}?utm_source=generator`;
 
     // Hide custom UI to avoid double UI
