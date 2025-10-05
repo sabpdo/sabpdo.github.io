@@ -136,12 +136,12 @@ function init3D() {
   );
 
   // Set initial camera position for diagonal corner view
-  cameraAngleX = 0.1; // Slight downward angle
-  cameraAngleY = 0.8; // Diagonal corner view angle
-  targetCameraAngleX = 0.1;
-  targetCameraAngleY = 0.8;
-  cameraDistance = 12; // More zoomed out
-  targetCameraDistance = 12;
+  cameraAngleX = 0.4; // Higher up and angled down more
+  cameraAngleY = 0.1; // Camera physically moved more to the right
+  targetCameraAngleX = 0.4;
+  targetCameraAngleY = 0.4; // But angled more to the left
+  cameraDistance = 13; // Distance to show entire room with reflection
+  targetCameraDistance = 13;
 
   updateCameraPosition();
 
@@ -1049,6 +1049,9 @@ function createMobile3DMenu() {
   // Create HTML text overlays for the menu
   createMenuTextOverlays(menuItems);
 
+  // Create reflection of the menu
+  createMenuReflection();
+
   console.log("3D Mobile menu created successfully!");
 }
 
@@ -1211,6 +1214,45 @@ function createMenuTextOverlays(menuItems) {
       };
     }
   });
+}
+
+// Create reflection of the 3D menu
+function createMenuReflection() {
+  if (!mobileMenuGroup) return;
+
+  // Clone the entire menu group
+  const mirroredMenuGroup = mobileMenuGroup.clone();
+
+  // Flip the mirrored menu vertically around the floor plane (y = -2.25)
+  mirroredMenuGroup.scale.y = -1;
+  // Position the mirrored menu so it reflects across the floor plane
+  mirroredMenuGroup.position.y = -5.5;
+
+  // Make the mirrored menu look like a water reflection
+  mirroredMenuGroup.traverse((child) => {
+    if (child.isMesh && child.material) {
+      // Create a new material to avoid affecting the original
+      const reflectionMaterial = child.material.clone();
+      reflectionMaterial.transparent = true;
+      reflectionMaterial.opacity = 0.25; // More subtle water-like reflection
+      reflectionMaterial.depthWrite = false; // Prevent z-fighting
+
+      // Add water-like blue tint and darken
+      if (reflectionMaterial.color) {
+        reflectionMaterial.color.multiplyScalar(0.4); // Darker
+        // Add subtle blue tint for water effect
+        reflectionMaterial.color.r *= 0.8;
+        reflectionMaterial.color.g *= 0.9;
+        reflectionMaterial.color.b *= 1.1;
+      }
+
+      // Apply the new material
+      child.material = reflectionMaterial;
+    }
+  });
+
+  // Add the mirrored menu to the scene
+  scene.add(mirroredMenuGroup);
 }
 
 // Toggle 3D mobile menu
@@ -1572,23 +1614,23 @@ function createWoodPlanksTexture({
 }
 
 function createWalls() {
-  // Darker, warmer wall tones
-  const backWallMaterial = new THREE.MeshLambertMaterial({ color: 0xb89477 });
-  const leftWallMaterial = new THREE.MeshLambertMaterial({ color: 0xa97f65 });
+  // Custom wall color as requested
+  const backWallMaterial = new THREE.MeshLambertMaterial({ color: 0xecc8af });
+  const leftWallMaterial = new THREE.MeshLambertMaterial({ color: 0xecc8af });
   const trimMaterial = new THREE.MeshLambertMaterial({ color: 0xff91a4 });
 
   // Floor - made thicker with box geometry
   const floorGeometry = new THREE.BoxGeometry(10, 0.5, 10); // Added thickness of 0.5 units
   const woodTexture = createWoodPlanksTexture({
     planks: 8,
-    baseColor: "#a46d49", // darker, warmer base
+    baseColor: "#c48a5a", // brighter, warmer base
     variation: 18,
-    seamColor: "#6b442c",
+    seamColor: "#8b5a3c",
   });
   woodTexture.repeat.set(2, 3);
   const floorMaterial = new THREE.MeshLambertMaterial({
     map: woodTexture,
-    color: 0x7a5136, // tint darker to counter overexposure
+    color: 0x9a6b46, // brighter floor color
   });
   const floor = new THREE.Mesh(floorGeometry, floorMaterial);
   // No rotation needed for box geometry - it's already oriented correctly
@@ -1600,13 +1642,15 @@ function createWalls() {
   // Darker base layer underneath the wooden floor
   const floorBaseGeometry = new THREE.BoxGeometry(10.5, 0.3, 10.2); // Slightly larger and thinner
   const floorBaseMaterial = new THREE.MeshLambertMaterial({
-    color: 0x2c1810, // Very dark brown/black base
+    color: 0x251502, // Very dark brown/black base
   });
   const floorBase = new THREE.Mesh(floorBaseGeometry, floorBaseMaterial);
   floorBase.position.y = -2.6; // Positioned below the wooden floor
   floorBase.receiveShadow = true;
   floorBase.castShadow = true;
   room.add(floorBase);
+
+  // Removed decorative elements for simpler aesthetic
 
   // Back wall - made thicker and slightly taller
   const backWallGeometry = new THREE.BoxGeometry(10.4, 8.4, 0.3);
@@ -1661,9 +1705,10 @@ function createWalls() {
 
   // Top border/trim for back wall
   const backWallTrimGeometry = new THREE.BoxGeometry(10.55, 0.3, 0.6); // Dark brown trim
+
   const backWallTrimMaterial = new THREE.MeshLambertMaterial({
-    color: 0x654321,
-  }); // Rich dark brown color
+    color: 0x5d4222,
+  }); // Simple dark brown color
   const backWallTrim = new THREE.Mesh(
     backWallTrimGeometry,
     backWallTrimMaterial
@@ -1678,8 +1723,8 @@ function createWalls() {
   // Top border/trim for left wall
   const leftWallTrimGeometry = new THREE.BoxGeometry(0.6, 0.3, 10); // Dark brown trim
   const leftWallTrimMaterial = new THREE.MeshLambertMaterial({
-    color: 0x654321,
-  }); // Rich dark brown color
+    color: 0x5d4222,
+  }); // Simple dark brown color
   const leftWallTrim = new THREE.Mesh(
     leftWallTrimGeometry,
     leftWallTrimMaterial
@@ -1690,6 +1735,18 @@ function createWalls() {
   leftWallTrim.receiveShadow = true;
   room.add(leftWallTrim);
 }
+
+// Removed floor trim function for simpler aesthetic
+function createFloorTrim() {
+  // Function removed for simpler aesthetic
+}
+
+// Removed decorative elements for simpler aesthetic
+function createRoomDecorations() {
+  // Function removed for simpler aesthetic
+}
+
+// Removed decorative functions for simpler aesthetic
 
 function createPlant(x, y, z, plantColor = 0x2e7d32) {
   const plantGroup = new THREE.Group();
