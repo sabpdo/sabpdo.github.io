@@ -1094,11 +1094,11 @@ function createMenuTextOverlays(menuItems) {
 
       // Create thick text with multiple outlines - enhanced for mobile
       context.lineWidth = 32 * outlineWidthMultiplier; // Very thick outline
-      context.strokeStyle = "#ffb6c1"; // Pink outline for title
+      context.strokeStyle = "#e6bcc4"; // Pink outline for title
       context.strokeText(item.text.toLowerCase(), 80, canvas.height / 2);
 
       context.lineWidth = 24 * outlineWidthMultiplier; // Thick middle outline
-      context.strokeStyle = "#ffc0cb"; // Lighter pink
+      context.strokeStyle = "#edcad1"; // Lighter pink
       context.strokeText(item.text.toLowerCase(), 80, canvas.height / 2);
 
       context.lineWidth = 16 * outlineWidthMultiplier; // Thick inner outline
@@ -1317,7 +1317,7 @@ function addMobileMenuToggle() {
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background: rgba(255, 182, 193, 0.9);
+    background: rgba(230, 188, 196, 0.9);
     border: 2px solid #8b4513;
     color: #8b4513;
     font-size: 20px;
@@ -1331,12 +1331,12 @@ function addMobileMenuToggle() {
 
   // Add hover effects
   toggleButton.addEventListener("mouseenter", () => {
-    toggleButton.style.background = "rgba(255, 192, 203, 0.95)";
+    toggleButton.style.background = "rgba(237, 202, 209, 0.95)";
     toggleButton.style.transform = "scale(1.05)";
   });
 
   toggleButton.addEventListener("mouseleave", () => {
-    toggleButton.style.background = "rgba(255, 182, 193, 0.9)";
+    toggleButton.style.background = "rgba(230, 188, 196, 0.9)";
     toggleButton.style.transform = "scale(1)";
   });
 
@@ -2802,7 +2802,7 @@ class SpotifyMusicPlayer {
     loginBtn.id = "compact-login-btn";
     loginBtn.innerHTML = '<i class="fab fa-spotify"></i> Login to Spotify';
     loginBtn.style.background = "rgba(255, 255, 255, 0.9)";
-    loginBtn.style.color = "#ff69b4";
+    loginBtn.style.color = "#c46b87";
     loginBtn.style.border = "none";
     loginBtn.style.borderRadius = "20px";
     loginBtn.style.padding = "8px 16px";
@@ -2810,23 +2810,23 @@ class SpotifyMusicPlayer {
     loginBtn.style.fontSize = "13px";
     loginBtn.style.cursor = "pointer";
     loginBtn.style.transition = "all 0.3s ease";
-    loginBtn.style.boxShadow = "0 2px 8px rgba(255, 105, 180, 0.2)";
+    loginBtn.style.boxShadow = "0 2px 8px rgba(196, 107, 135, 0.2)";
     loginBtn.style.margin = "10px auto";
     loginBtn.style.display = "block";
 
     // Add hover effects
     loginBtn.addEventListener("mouseenter", () => {
       loginBtn.style.background = "white";
-      loginBtn.style.color = "#ff1493";
+      loginBtn.style.color = "#a8466d";
       loginBtn.style.transform = "translateY(-2px)";
-      loginBtn.style.boxShadow = "0 4px 12px rgba(255, 105, 180, 0.3)";
+      loginBtn.style.boxShadow = "0 4px 12px rgba(196, 107, 135, 0.3)";
     });
 
     loginBtn.addEventListener("mouseleave", () => {
       loginBtn.style.background = "rgba(255, 255, 255, 0.9)";
-      loginBtn.style.color = "#ff69b4";
+      loginBtn.style.color = "#c46b87";
       loginBtn.style.transform = "translateY(0)";
-      loginBtn.style.boxShadow = "0 2px 8px rgba(255, 105, 180, 0.2)";
+      loginBtn.style.boxShadow = "0 2px 8px rgba(196, 107, 135, 0.2)";
     });
 
     // Add click handler
@@ -2968,7 +2968,7 @@ class SpotifyMusicPlayer {
     // Reset button styling to pink theme
     const loginBtn = this.spotifyLogin.querySelector("button");
     if (loginBtn) {
-      loginBtn.style.background = "#ff69b4";
+      loginBtn.style.background = "#c46b87";
       loginBtn.style.color = "white";
       loginBtn.style.border = "none";
       loginBtn.style.borderRadius = "25px";
@@ -2977,7 +2977,7 @@ class SpotifyMusicPlayer {
       loginBtn.style.fontSize = "14px";
       loginBtn.style.cursor = "pointer";
       loginBtn.style.transition = "all 0.3s ease";
-      loginBtn.style.boxShadow = "0 2px 8px rgba(255, 105, 180, 0.3)";
+      loginBtn.style.boxShadow = "0 2px 8px rgba(196, 107, 135, 0.3)";
       loginBtn.style.margin = "10px auto";
       loginBtn.style.display = "block";
     }
@@ -3421,13 +3421,13 @@ class SpotifyMusicPlayer {
           position: relative;
         ">
           <div style="margin-bottom: 20px;">
-            <i class="fas fa-lock" style="font-size: 48px; color: #ff69b4; margin-bottom: 16px; display: block; opacity: 0.8;"></i>
+            <i class="fas fa-lock" style="font-size: 48px; color: #c46b87; margin-bottom: 16px; display: block; opacity: 0.8;"></i>
             <h4 style="color: #2d3748; font-size: 18px; margin-bottom: 12px; font-weight: 700; letter-spacing: -0.025em;">Search Access Restricted</h4>
             <p style="color: #4a5568; margin: 8px 0; line-height: 1.6; font-size: 14px;">Search functionality is currently limited to whitelisted users.</p>
-            <p style="color: #4a5568; margin: 8px 0; line-height: 1.6; font-size: 14px;">Contact <a href="mailto:sabpdo@mit.edu" style="color: #ff69b4; text-decoration: none; font-weight: 600; border-bottom: 1px solid transparent; transition: all 0.2s ease;" onmouseover="this.style.borderBottomColor='#ff69b4'" onmouseout="this.style.borderBottomColor='transparent'">sabpdo@mit.edu</a> for access.</p>
+            <p style="color: #4a5568; margin: 8px 0; line-height: 1.6; font-size: 14px;">Contact <a href="mailto:sabpdo@mit.edu" style="color: #c46b87; text-decoration: none; font-weight: 600; border-bottom: 1px solid transparent; transition: all 0.2s ease;" onmouseover="this.style.borderBottomColor='#c46b87'" onmouseout="this.style.borderBottomColor='transparent'">sabpdo@mit.edu</a> for access.</p>
           </div>
           <button class="logout-btn" onclick="musicPlayer.logout()" style="
-            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            background: linear-gradient(135deg, #c46b87 0%, #a8466d 100%);
             color: white;
             border: none;
             border-radius: 8px;
@@ -3440,9 +3440,9 @@ class SpotifyMusicPlayer {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            box-shadow: 0 2px 8px rgba(255, 105, 180, 0.3);
+            box-shadow: 0 2px 8px rgba(196, 107, 135, 0.3);
             letter-spacing: 0.025em;
-          " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(255, 105, 180, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(255, 105, 180, 0.3)'">
+          " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(196, 107, 135, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(196, 107, 135, 0.3)'">
             <i class="fas fa-sign-out-alt" style="font-size: 12px;"></i>
             Logout
           </button>
@@ -4027,7 +4027,7 @@ function initBriefcaseAnimations() {
   achievementDescriptions.forEach((desc, index) => {
     const originalText = desc.textContent;
     desc.textContent = "";
-    desc.style.borderRight = "2px solid #667eea";
+    desc.style.borderRight = "2px solid #d4849a";
     desc.style.animation = "blink 1s infinite";
 
     setTimeout(() => {
@@ -4050,7 +4050,7 @@ function initBriefcaseAnimations() {
   const blinkStyle = document.createElement("style");
   blinkStyle.textContent = `
     @keyframes blink {
-      0%, 50% { border-color: #667eea; }
+      0%, 50% { border-color: #d4849a; }
       51%, 100% { border-color: transparent; }
     }
   `;
